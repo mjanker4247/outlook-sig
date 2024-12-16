@@ -1,0 +1,108 @@
+; Include necessary headers
+!include "MUI2.nsh"
+
+; Variables
+Var FIRST_NAME
+Var LAST_NAME
+Var OUTPUT_FILE_PATH
+
+; Installer name and output
+Name "HTML Page Installer"
+OutFile "HTMLPageInstaller.exe"
+
+; Define the source HTML file (to be included in the installer)
+!define SOURCE_HTML "template.html"
+
+; Define installation directory
+InstallDir "$LOCALAPPDATA\HTMLPageApp"
+
+; Pages
+Page custom InputPage
+Page instfiles
+
+; Language
+!insertmacro MUI_LANGUAGE "English"
+
+; Function to create a custom input page
+Function InputPage
+    nsDialogs::Create 1018
+    ${If} $0 == error
+        Abort
+    ${EndIf}
+
+    ; Label: Prompt for First Name
+    ${NSD_CreateLabel} 0 0 100% 12u "Enter your First Name:"
+    Pop $0
+
+    ; Textbox for First Name
+    ${NSD_CreateText} 0 12u 100% 12u ""
+    Pop $1
+    ${NSD_OnChange} $1 OnFirstNameChange
+
+    ; Label: Prompt for Last Name
+    ${NSD_CreateLabel} 0 30u 100% 12u "Enter your Last Name:"
+    Pop $0
+
+    ; Textbox for Last Name
+    ${NSD_CreateText} 0 42u 100% 12u ""
+    Pop $2
+    ${NSD_OnChange} $2 OnLastNameChange
+
+    ; Show the custom page
+    nsDialogs::Show
+FunctionEnd
+
+Function OnFirstNameChange
+    ${NSD_GetText} $1 $FIRST_NAME
+FunctionEnd
+
+Function OnLastNameChange
+    ${NSD_GetText} $2 $LAST_NAME
+FunctionEnd
+
+; Section to install and modify the existing HTML file
+Section "Install HTML File"
+
+    ; Define output path
+    StrCpy $OUTPUT_FILE_PATH "$LOCALAPPDATA\HTMLPageApp\index.html"
+
+    ; Create the installation directory
+    CreateDirectory "$LOCALAPPDATA\HTMLPageApp"
+
+    ; Extract the source HTML file (template) to a temporary location
+    SetOutPath "$INSTDIR"
+    File "${SOURCE_HTML}" ; Includes template.html in the installer
+    StrCpy $0 "$INSTDIR\template.html"
+
+    ; Open the template file for reading
+    FileOpen $1 $0 "r"
+    FileOpen $2 $OUTPUT_FILE_PATH "w"
+
+    ; Read and replace placeholders
+    ${Do}
+        FileRead $1 $3 ; Read a line into $3
+        ${If} $3 == "" ; End of file
+            ${Break}
+        ${EndIf}
+
+        ; Replace placeholders with user input
+        ${ReplaceInString} $3 "{{FIRST_NAME}}" $FIRST_NAME
+        ${ReplaceInString} $3 "{{LAST_NAME}}" $LAST_NAME
+
+        ; Write the modified line to the final file
+        FileWrite $2 $3
+    ${Loop}
+
+    ; Close files
+    FileClose $1
+    FileClose $2
+
+    ; Delete the temporary template file
+    Delete $0
+
+    ; Confirmation message
+    MessageBox MB_OK "The customized HTML file has been installed at: $OUTPUT_FILE_PATH"
+SectionEnd
+
+; End of script
+SectionEnd
