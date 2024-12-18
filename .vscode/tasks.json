@@ -1,0 +1,26 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Create Installer",
+      "type": "shell",
+      "command": "C:\\private\\apps\\NSIS\\makensis.exe",
+      "args": [
+        "/V3",
+        "${workspaceFolder}\\nsis_script.nsis"
+      ],
+      "group": "build"
+    },
+    {
+      "label": "Create Installer (strict)",
+      "type": "shell",
+      "command": "C:\\private\\apps\\NSIS\\makensis.exe",
+      "args": [
+        "/V3",
+        "/WX",
+        "${workspaceFolder}\\nsis_script.nsis"
+      ],
+      "group": "build"
+    }
+  ]
+}

@@ -1,9 +1,47 @@
 ; Include necessary headers
 !include "MUI2.nsh"
 
+!macro ReplaceInString OUTPUT INPUT SEARCH REPLACE
+    ; OUTPUT = Variable to store the result
+    ; INPUT = Input string
+    ; SEARCH = Substring to search for
+    ; REPLACE = Substring to replace with
+
+    StrCpy ${OUTPUT} ""
+    StrLen $R0 ${INPUT}
+    StrLen $R1 ${SEARCH}
+
+    ; Loop through the input string
+    ${Do}
+        ; Check if the SEARCH substring exists in the remaining INPUT string
+        StrStr ${INPUT} ${SEARCH} $R2
+        ${If} $R2 == ""
+            ; No more occurrences, append the remaining string
+            StrCpy ${OUTPUT} "${OUTPUT}${INPUT}"
+            ${Break}
+        ${Else}
+            ; Append everything before SEARCH to OUTPUT
+            StrCpy $R3 ${INPUT} $R2
+            StrCpy ${OUTPUT} "${OUTPUT}${R3}"
+            
+            ; Append REPLACE instead of SEARCH
+            StrCpy ${OUTPUT} "${OUTPUT}${REPLACE}"
+            
+            ; Trim the processed part from INPUT
+            StrLen $R4 ${SEARCH}
+            IntOp $R2 $R2 + $R4
+            StrCpy ${INPUT} ${INPUT} "" $R2
+        ${EndIf}
+    ${Loop}
+
+!macroend
+
 ; Variables
 Var FIRST_NAME
 Var LAST_NAME
+Var TELEPHONE_NUMBER
+Var TELEPHONE_URL
+Var EMAIL_URL
 Var OUTPUT_FILE_PATH
 
 ; Installer name and output
@@ -21,6 +59,7 @@ InstallDir "$APPDATA\Microsoft\Signatures"
 
 ; Pages
 Page custom InputPage
+Page custom TelephonePage
 Page instfiles
 
 ; Language
@@ -60,15 +99,6 @@ Function InputPage
     Pop $2
     ${NSD_OnChange} $2 OnEMailAddressChange
     
-    ; Label: Prompt for telephone number
-    ${NSD_CreateLabel} 0 30u 100% 12u "Enter your phone number:"
-    Pop $0
-
-    ; Textbox for telephone number
-    ${NSD_CreateText} 0 42u 100% 12u ""
-    Pop $2
-    ${NSD_OnChange} $2 OnTelephoneNumberChange
-
     ; Show the custom page
     nsDialogs::Show
 FunctionEnd
@@ -82,11 +112,56 @@ Function OnLastNameChange
 FunctionEnd
 
 Function OnEMailAddressChange
-    ${NSD_GetText} $2 $EMAIL
+    ${NSD_GetText} $2 $EMAIL_URL
+    ; Prefix with "mailto:"
+    StrCpy $EMAIL_URL "mailto:$EMAIL_URL"
+FunctionEnd
+
+; Function to create the Telephone Page
+Function TelephonePage
+    nsDialogs::Create 1018
+    ${If} $0 == error
+        Abort
+    ${EndIf}
+
+    ; Label: Prompt for Telephone Number
+    ${NSD_CreateLabel} 0 0 100% 12u "Enter your Telephone Number (e.g., +12 34567-890):"
+    Pop $0
+
+    ; Textbox for Telephone Number
+    ${NSD_CreateText} 0 12u 100% 12u ""
+    Pop $1
+    ${NSD_OnChange} $1 OnTelephoneNumberChange
+
+    ; Show the custom page
+    nsDialogs::Show
 FunctionEnd
 
 Function OnTelephoneNumberChange
-    ${NSD_GetText} $2 $TELEPHONE_NUMBER
+    ${NSD_GetText} $1 $TELEPHONE_NUMBER
+
+    ; Initialize the URL variable
+    StrCpy $TELEPHONE_URL ""
+
+    ; Get the length of the telephone number string
+    StrLen $3 $TELEPHONE_NUMBER
+
+    ; Loop through each character of the telephone number
+    ${For} $2 0 $3
+        ; Extract the current character
+        StrCpy $4 $TELEPHONE_NUMBER $2 1
+        
+        ; Check if the character is a valid digit (0-9)
+        ${If} "$4" >= "0"
+            ${AndIf} "$4" <= "9"
+            StrCpy $TELEPHONE_URL "$TELEPHONE_URL$4" ; Append digit to URL
+        ${ElseIf} "$4" == "+" ; Check if it's a '+'
+            StrCpy $TELEPHONE_URL "$TELEPHONE_URL$4" ; Append '+' to URL
+        ${EndIf}
+    ${Next}
+
+    ; Prefix the sanitized number with "tel:"
+    StrCpy $TELEPHONE_URL "tel:$TELEPHONE_URL"
 FunctionEnd
 
 ; Section to install and modify the HTML file
@@ -114,11 +189,20 @@ Section "Install Signature Files"
             ${Break}
         ${EndIf}
 
-        ; Replace placeholders with user input
-        ${ReplaceInString} $3 "{{FIRST_NAME}}" $FIRST_NAME
-        ${ReplaceInString} $3 "{{LAST_NAME}}" $LAST_NAME
-        ${ReplaceInString} $3 "{{LAST_NAME}}" $EMAIL
-        ${ReplaceInString} $3 "{{LAST_NAME}}" $TELEPHONE_NUMBER
+        ; Replace {{FIRST_NAME}}
+        !insertmacro ReplaceInString $3 $3 "{{FIRST_NAME}}" $FIRST_NAME
+
+        ; Replace {{LAST_NAME}}
+        !insertmacro ReplaceInString $3 $3 "{{LAST_NAME}}" $LAST_NAME
+
+        ; Replace {{EMAIL_URL}}
+        !insertmacro ReplaceInString $3 $3 "{{EMAIL_URL}}" $EMAIL_URL
+        
+        ; Replace {{TELEPHONE_URL}}
+        !insertmacro ReplaceInString $3 $3 "{{TELEPHONE_URL}}" $TELEPHONE_URL
+
+        ; Replace {{TELEPHONE_NUMBER}}
+        !insertmacro ReplaceInString $3 $3 "{{TELEPHONE_NUMBER}}" $TELEPHONE_NUMBER
 
         ; Write the modified line to the final file
         FileWrite $2 $3
@@ -136,7 +220,7 @@ Section "Install Signature Files"
     File /r "${RESOURCE_DIR}\*" ; Recursively includes all files and folders from the resources directory
 
     ; Confirmation message
-    MessageBox MB_OK "The customized HTML file and resources have been installed at: $APPDATA\Microsoft\Signatures"
+    MessageBox MB_OK "The Outlook signature and its resources have been installed at: $APPDATA\Microsoft\Signatures"
 SectionEnd
 
 ; End of script
