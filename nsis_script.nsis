@@ -7,14 +7,17 @@ Var LAST_NAME
 Var OUTPUT_FILE_PATH
 
 ; Installer name and output
-Name "HTML Page Installer"
-OutFile "HTMLPageInstaller.exe"
+Name "Outlook Signature Installer"
+OutFile "OutlookSignatureInstaller.exe"
 
 ; Define the source HTML file (to be included in the installer)
-!define SOURCE_HTML "template.html"
+!define SOURCE_HTML "signature.htm"
+
+; Define resource directory (to be included in the installer)
+!define RESOURCE_DIR "signature-files"
 
 ; Define installation directory
-InstallDir "$LOCALAPPDATA\HTMLPageApp"
+InstallDir "$APPDATA\Microsoft\Signatures"
 
 ; Pages
 Page custom InputPage
@@ -48,6 +51,24 @@ Function InputPage
     Pop $2
     ${NSD_OnChange} $2 OnLastNameChange
 
+    ; Label: Prompt for E-Mail Address
+    ${NSD_CreateLabel} 0 30u 100% 12u "Enter your email address:"
+    Pop $0
+
+    ; Textbox for E-Mail Address
+    ${NSD_CreateText} 0 42u 100% 12u ""
+    Pop $2
+    ${NSD_OnChange} $2 OnEMailAddressChange
+    
+    ; Label: Prompt for telephone number
+    ${NSD_CreateLabel} 0 30u 100% 12u "Enter your phone number:"
+    Pop $0
+
+    ; Textbox for telephone number
+    ${NSD_CreateText} 0 42u 100% 12u ""
+    Pop $2
+    ${NSD_OnChange} $2 OnTelephoneNumberChange
+
     ; Show the custom page
     nsDialogs::Show
 FunctionEnd
@@ -60,21 +81,29 @@ Function OnLastNameChange
     ${NSD_GetText} $2 $LAST_NAME
 FunctionEnd
 
-; Section to install and modify the existing HTML file
-Section "Install HTML File"
+Function OnEMailAddressChange
+    ${NSD_GetText} $2 $EMAIL
+FunctionEnd
+
+Function OnTelephoneNumberChange
+    ${NSD_GetText} $2 $TELEPHONE_NUMBER
+FunctionEnd
+
+; Section to install and modify the HTML file
+Section "Install Signature Files"
 
     ; Define output path
-    StrCpy $OUTPUT_FILE_PATH "$LOCALAPPDATA\HTMLPageApp\index.html"
+    StrCpy $OUTPUT_FILE_PATH "$APPDATA\Microsoft\Signatures\signature.htm"
 
     ; Create the installation directory
-    CreateDirectory "$LOCALAPPDATA\HTMLPageApp"
+    CreateDirectory "$APPDATA\Microsoft\Signatures\signature-files"
 
     ; Extract the source HTML file (template) to a temporary location
     SetOutPath "$INSTDIR"
-    File "${SOURCE_HTML}" ; Includes template.html in the installer
-    StrCpy $0 "$INSTDIR\template.html"
+    File "${SOURCE_HTML}" ; Includes signature.htm in the installer
+    StrCpy $0 "$INSTDIR\signature.htm"
 
-    ; Open the template file for reading
+    ; Open the signature file for reading
     FileOpen $1 $0 "r"
     FileOpen $2 $OUTPUT_FILE_PATH "w"
 
@@ -88,6 +117,8 @@ Section "Install HTML File"
         ; Replace placeholders with user input
         ${ReplaceInString} $3 "{{FIRST_NAME}}" $FIRST_NAME
         ${ReplaceInString} $3 "{{LAST_NAME}}" $LAST_NAME
+        ${ReplaceInString} $3 "{{LAST_NAME}}" $EMAIL
+        ${ReplaceInString} $3 "{{LAST_NAME}}" $TELEPHONE_NUMBER
 
         ; Write the modified line to the final file
         FileWrite $2 $3
@@ -100,8 +131,12 @@ Section "Install HTML File"
     ; Delete the temporary template file
     Delete $0
 
+    ; Install additional resource files
+    SetOutPath "$APPDATA\Microsoft\Signatures"
+    File /r "${RESOURCE_DIR}\*" ; Recursively includes all files and folders from the resources directory
+
     ; Confirmation message
-    MessageBox MB_OK "The customized HTML file has been installed at: $OUTPUT_FILE_PATH"
+    MessageBox MB_OK "The customized HTML file and resources have been installed at: $APPDATA\Microsoft\Signatures"
 SectionEnd
 
 ; End of script
