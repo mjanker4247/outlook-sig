@@ -5,26 +5,38 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <style type="text/css">
       p {
-        line-height: 3px;
+        line-height: 4pt;
       }
-      p.name {
-        font-family: Arial, Helvetica, sans-serif;
-        font-weight: bold;
-        font-size: x-large;
-        line-height: 50px;
-      }
-      p a {
+      a {
         text-decoration: none;
+        color: black;
+      }
+      table {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 11pt;
+      }
+      tr.company_board {
+        background-color: #f8f242;
+      }
+      tr.environment {
+        font-style: italic;
+        font-size: smaller;
+        border: 1px solid black;
+      }
+      tr.social {
+        text-align: center;
+        vertical-align: top;
+        background-color: antiquewhite;
       }
     </style>
   </head>
 
   <body>
     <div>
-      <table border="0" cellspacing="0" cellpadding="0">
+      <table>
         <tbody>
           <tr>
-            <td colspan="5">
+            <td colspan="5" class="tuv_logo">
               <p>
                 <img
                   src="signature-files/tuv.png"
@@ -34,9 +46,9 @@
                 />
               </p>
             </td>
-            <td rowspan="4" width="6">&nbsp;</td>
-            <td rowspan="4">
-              <p class="name">{{FIRST_NAME}} {{LAST_NAME}}</p>
+            <td rowspan="2" width="6" class="spacer_vertical">&nbsp;</td>
+            <td rowspan="2" class="name_address">
+              <h2 class="name">{{FIRST_NAME}} {{LAST_NAME}}</h2>
               <p class="email">
                 <a href="{{EMAIL_URL}}">
                   <span>{{EMAIL_URL}}</span></a
@@ -59,10 +71,7 @@
               </p>
             </td>
           </tr>
-          <tr>
-            <td colspan="5">&nbsp;</td>
-          </tr>
-          <tr>
+          <tr class="social">
             <td width="30">
               <p>
                 <a href="https://www.facebook.com/tuevkarriere/?locale=de_DE"
@@ -126,12 +135,12 @@
               </p>
             </td>
           </tr>
-          <tr>
+          <tr style="background-color: blue;">
             <td colspan="7">&nbsp;</td>
           </tr>
-          <tr>
+          <tr class="company_board">
             <td colspan="7">
-              <p class="board">
+              <p>
                 <span lang="DE-DE">Gesch&auml;ftsf&uuml;hrung</span>/<span
                   lang="EN-US"
                   >Board of Management</span
@@ -145,18 +154,18 @@
                   >Dipl.-Kfm. Dr. J&ouml;rg Schl&ouml;sser</span
                 >
               </p>
-              <p class="hrb">
+              <p style="margin: 25px 0;">
                 <span lang="DE-DE">N&uuml;rnberg HRB 26013</span>
               </p>
               <p class="chairman">
                 <span lang="DE-DE">Vorsitzender des Aufsichtsrates</span>/<span
                   lang="EN-US"
                   >Chairman of the Supervisory Board</span
-                >:<span lang="DE-DE">Dr. Michael F&uuml;bi</span>
+                >:&nbsp;<span lang="DE-DE">Dr. Michael F&uuml;bi</span>
               </p>
             </td>
           </tr>
-          <tr>
+          <tr class="environment">
             <td colspan="7">
               <p>
                 <span lang="DE-DE"
