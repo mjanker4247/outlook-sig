@@ -1,40 +1,94 @@
 ; Include necessary headers
 !include "MUI2.nsh"
+!include "LogicLib.nsh"
+!include "WinCore.nsh"
+!include "Integration.nsh"
 
-!macro ReplaceInString OUTPUT INPUT SEARCH REPLACE
-    ; OUTPUT = Variable to store the result
-    ; INPUT = Input string
-    ; SEARCH = Substring to search for
-    ; REPLACE = Substring to replace with
+; Request application privileges for Windows Vista
+RequestExecutionLevel user
 
-    StrCpy ${OUTPUT} ""
-    StrLen $R0 ${INPUT}
-    StrLen $R1 ${SEARCH}
+; Build Unicode installer
+Unicode True
 
-    ; Loop through the input string
-    ${Do}
-        ; Check if the SEARCH substring exists in the remaining INPUT string
-        StrStr ${INPUT} ${SEARCH} $R2
-        ${If} $R2 == ""
-            ; No more occurrences, append the remaining string
-            StrCpy ${OUTPUT} "${OUTPUT}${INPUT}"
-            ${Break}
-        ${Else}
-            ; Append everything before SEARCH to OUTPUT
-            StrCpy $R3 ${INPUT} $R2
-            StrCpy ${OUTPUT} "${OUTPUT}${R3}"
-            
-            ; Append REPLACE instead of SEARCH
-            StrCpy ${OUTPUT} "${OUTPUT}${REPLACE}"
-            
-            ; Trim the processed part from INPUT
-            StrLen $R4 ${SEARCH}
-            IntOp $R2 $R2 + $R4
-            StrCpy ${INPUT} ${INPUT} "" $R2
-        ${EndIf}
-    ${Loop}
+; https://nsis.sourceforge.io/StrReplace_v4
 
+!define Var0 $R0
+!define Var1 $R1
+!define Var2 $R2
+!define Var3 $R3
+!define Var4 $R4
+!define Var5 $R5
+!define Var6 $R6
+!define Var7 $R7
+!define Var8 $R8
+ 
+!macro StrReplaceV4 Var Replace With In
+ Push `${Replace}`
+ Push `${With}`
+ Push `${In}`
+  Call StrReplaceV4
+ Pop `${Var}`
 !macroend
+!define StrReplaceV4 `!insertmacro StrReplaceV4`
+ 
+Function StrReplaceV4
+Exch ${Var0} #in
+Exch 1
+Exch ${Var1} #with
+Exch 2
+Exch ${Var2} #replace
+Push ${Var3}
+Push ${Var4}
+Push ${Var5}
+Push ${Var6}
+Push ${Var7}
+Push ${Var8}
+ 
+ StrCpy ${Var3} -1
+ StrLen ${Var5} ${Var0}
+ StrLen ${Var6} ${Var1}
+ StrLen ${Var7} ${Var2}
+ Loop:
+  IntOp ${Var3} ${Var3} + 1
+  StrCpy ${Var4} ${Var0} ${Var7} ${Var3}
+  StrCmp ${Var3} ${Var5} End
+  StrCmp ${Var4} ${Var2} 0 Loop
+ 
+   StrCpy ${Var4} ${Var0} ${Var3}
+   IntOp ${Var8} ${Var3} + ${Var7}
+   StrCpy ${Var8} ${Var0} "" ${Var8}
+   StrCpy ${Var0} ${Var4}${Var1}${Var8}
+   IntOp ${Var3} ${Var3} + ${Var6}
+   IntOp ${Var3} ${Var3} - 1
+   IntOp ${Var5} ${Var5} - ${Var7}
+   IntOp ${Var5} ${Var5} + ${Var6}
+ 
+ Goto Loop
+ End:
+ 
+Pop ${Var8}
+Pop ${Var7}
+Pop ${Var6}
+Pop ${Var5}
+Pop ${Var4}
+Pop ${Var3}
+Pop ${Var2}
+Exch
+Pop ${Var1}
+Exch ${Var0} #out
+FunctionEnd
+ 
+!undef Var8
+!undef Var7
+!undef Var6
+!undef Var5
+!undef Var4
+!undef Var3
+!undef Var2
+!undef Var1
+!undef Var0
+
+; https://nsis.sourceforge.io/StrReplace_v4
 
 ; Variables
 Var FIRST_NAME
@@ -55,15 +109,23 @@ OutFile "OutlookSignatureInstaller.exe"
 !define RESOURCE_DIR "signature-files"
 
 ; Define installation directory
-InstallDir "$APPDATA\Microsoft\Signatures"
+InstallDir ""   ; Don't set a default $InstDir so we can detect /D= and InstallDirRegKey
 
 ; Pages
 Page custom InputPage
 Page custom TelephonePage
 Page instfiles
 
-; Language
-!insertmacro MUI_LANGUAGE "English"
+Function .onInit
+  SetShellVarContext Current
+
+  ${If} $InstDir == "" ; No /D= nor InstallDirRegKey?
+    GetKnownFolderPath $InstDir ${FOLDERID_RoamingAppData} ; This folder only exists on Win7+
+    StrCmp $InstDir "" 0 +2 
+  ${EndIf}
+
+  
+FunctionEnd
 
 ; Function to create a custom input page
 Function InputPage
@@ -91,13 +153,13 @@ Function InputPage
     ${NSD_OnChange} $2 OnLastNameChange
 
     ; Label: Prompt for E-Mail Address
-    ${NSD_CreateLabel} 0 30u 100% 12u "Enter your email address:"
+    ${NSD_CreateLabel} 0 60u 100% 12u "Enter your email address:"
     Pop $0
 
     ; Textbox for E-Mail Address
-    ${NSD_CreateText} 0 42u 100% 12u ""
-    Pop $2
-    ${NSD_OnChange} $2 OnEMailAddressChange
+    ${NSD_CreateText} 0 72u 100% 12u ""
+    Pop $3
+    ${NSD_OnChange} $3 OnEMailAddressChange
     
     ; Show the custom page
     nsDialogs::Show
@@ -174,9 +236,9 @@ Section "Install Signature Files"
     CreateDirectory "$APPDATA\Microsoft\Signatures\signature-files"
 
     ; Extract the source HTML file (template) to a temporary location
-    SetOutPath "$INSTDIR"
+    SetOutPath "$InstDir\Microsoft\Signatures"
     File "${SOURCE_HTML}" ; Includes signature.htm in the installer
-    StrCpy $0 "$INSTDIR\signature.htm"
+    StrCpy $0 "$InstDir\Microsoft\Signatures\signature-files\signature.htm"
 
     ; Open the signature file for reading
     FileOpen $1 $0 "r"
@@ -190,19 +252,20 @@ Section "Install Signature Files"
         ${EndIf}
 
         ; Replace {{FIRST_NAME}}
-        !insertmacro ReplaceInString $3 $3 "{{FIRST_NAME}}" $FIRST_NAME
+		; ${StrReplaceV4} $Var "replace" "with" "in string"
+		${StrReplaceV4} $3 "{{FIRST_NAME}}" $FIRST_NAME "$3"
 
         ; Replace {{LAST_NAME}}
-        !insertmacro ReplaceInString $3 $3 "{{LAST_NAME}}" $LAST_NAME
+        ${StrReplaceV4} $3 "{{LAST_NAME}}" $LAST_NAME "$3"
 
         ; Replace {{EMAIL_URL}}
-        !insertmacro ReplaceInString $3 $3 "{{EMAIL_URL}}" $EMAIL_URL
+		${StrReplaceV4} $3 "{{EMAIL_URL}}" $EMAIL_URL "$3"
         
         ; Replace {{TELEPHONE_URL}}
-        !insertmacro ReplaceInString $3 $3 "{{TELEPHONE_URL}}" $TELEPHONE_URL
+        ${StrReplaceV4} $3 "{{TELEPHONE_URL}}" $TELEPHONE_URL "$3"
 
         ; Replace {{TELEPHONE_NUMBER}}
-        !insertmacro ReplaceInString $3 $3 "{{TELEPHONE_NUMBER}}" $TELEPHONE_NUMBER
+        ${StrReplaceV4} $3 "{{TELEPHONE_NUMBER}}" $TELEPHONE_NUMBER "$3"
 
         ; Write the modified line to the final file
         FileWrite $2 $3
@@ -216,12 +279,12 @@ Section "Install Signature Files"
     Delete $0
 
     ; Install additional resource files
-    SetOutPath "$APPDATA\Microsoft\Signatures"
+    ;SetOutPath "$APPDATA\Microsoft\Signatures\signature-files"
+    SetOutPath "$InstDir\Microsoft\Signatures\signature-files"
     File /r "${RESOURCE_DIR}\*" ; Recursively includes all files and folders from the resources directory
 
     ; Confirmation message
     MessageBox MB_OK "The Outlook signature and its resources have been installed at: $APPDATA\Microsoft\Signatures"
-SectionEnd
 
 ; End of script
 SectionEnd
