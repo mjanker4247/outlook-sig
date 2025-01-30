@@ -7,7 +7,7 @@
       "command": "C:\\private\\apps\\NSIS\\makensis.exe",
       "args": [
         "/V3",
-        "${workspaceFolder}\\nsis_script.nsis"
+        "${workspaceFolder}\\nsis_script.nsi"
       ],
       "group": "build"
     },
@@ -18,7 +18,7 @@
       "args": [
         "/V3",
         "/WX",
-        "${workspaceFolder}\\nsis_script.nsis"
+        "${workspaceFolder}\\nsis_script.nsi"
       ],
       "group": "build"
     }

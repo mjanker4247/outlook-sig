@@ -236,7 +236,7 @@ Section "Install Signature Files"
     CreateDirectory "$APPDATA\Microsoft\Signatures\signature-files"
 
     ; Extract the source HTML file (template) to a temporary location
-    SetOutPath "$InstDir\Microsoft\Signatures"
+    SetOutPath "$APPDATA\Microsoft\Signatures"
     File "${SOURCE_HTML}" ; Includes signature.htm in the installer
     StrCpy $0 "$InstDir\Microsoft\Signatures\signature-files\signature.htm"
 
@@ -279,8 +279,8 @@ Section "Install Signature Files"
     Delete $0
 
     ; Install additional resource files
-    ;SetOutPath "$APPDATA\Microsoft\Signatures\signature-files"
-    SetOutPath "$InstDir\Microsoft\Signatures\signature-files"
+    SetOutPath "$APPDATA\Microsoft\Signatures\signature-files"
+    ;SetOutPath "$InstDir\Microsoft\Signatures\signature-files"
     File /r "${RESOURCE_DIR}\*" ; Recursively includes all files and folders from the resources directory
 
     ; Confirmation message
