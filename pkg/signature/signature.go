@@ -23,6 +23,7 @@ type Data struct {
 // Installer handles signature installation
 type Installer struct {
 	TemplateBase string
+	sigDir       string // Optional override for signature directory
 }
 
 // NewInstaller creates a new signature installer
@@ -34,29 +35,22 @@ func NewInstaller(templateBase string) *Installer {
 
 // GetOutlookSignatureDir returns the path to the Outlook signatures directory
 func GetOutlookSignatureDir() (string, error) {
-	var sigDir string
 	switch runtime.GOOS {
 	case "windows":
 		appData := os.Getenv("APPDATA")
 		if appData == "" {
 			return "", fmt.Errorf("APPDATA environment variable not found")
 		}
-		sigDir = filepath.Join(appData, "Microsoft", "Signatures")
+		return filepath.Join(appData, "Microsoft", "Signatures"), nil
 	case "darwin":
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return "", fmt.Errorf("failed to get user home directory: %v", err)
 		}
-		sigDir = filepath.Join(homeDir, "Library", "Group Containers", "UBF8T346G9.Office", "Outlook", "Outlook 15 Profiles", "Main Profile", "Signatures")
+		return filepath.Join(homeDir, "Library", "Group Containers", "UBF8T346G9.Office", "Outlook", "Outlook 15 Profiles", "Main Profile", "Signatures"), nil
 	default:
 		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
-
-	if err := os.MkdirAll(sigDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create signature directory: %v", err)
-	}
-
-	return sigDir, nil
 }
 
 // Install installs a signature with the given data
@@ -65,9 +59,20 @@ func (i *Installer) Install(data Data, sigName string) error {
 		return fmt.Errorf("templates directory not found at %s", i.TemplateBase)
 	}
 
-	sigDir, err := GetOutlookSignatureDir()
-	if err != nil {
-		return fmt.Errorf("failed to get signature directory: %v", err)
+	var sigDir string
+	var err error
+	if i.sigDir != "" {
+		sigDir = i.sigDir
+	} else {
+		sigDir, err = GetOutlookSignatureDir()
+		if err != nil {
+			return fmt.Errorf("failed to get signature directory: %v", err)
+		}
+	}
+
+	// Create the signature directory if it doesn't exist
+	if err := os.MkdirAll(sigDir, 0755); err != nil {
+		return fmt.Errorf("failed to create signature directory: %v", err)
 	}
 
 	fmt.Println("Installing signature to:", sigDir)
@@ -87,7 +92,8 @@ func (i *Installer) Install(data Data, sigName string) error {
 			"unescape": unescapePhoneNumber,
 		}
 
-		tpl, err := template.New(sigName).Funcs(funcMap).ParseFiles(templatePath)
+		// Use html/template for both file types to ensure consistent escaping
+		tpl, err := template.New(filepath.Base(templatePath)).Funcs(funcMap).ParseFiles(templatePath)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("failed to parse %s: %v", templatePath, err))
 			continue
@@ -127,7 +133,10 @@ func (i *Installer) Install(data Data, sigName string) error {
 }
 
 func unescapePhoneNumber(phone string) string {
-	return strings.ReplaceAll(phone, "&#43;", "+")
+	// First replace HTML entity
+	phone = strings.ReplaceAll(phone, "&#43;", "+")
+	// Then ensure any remaining + signs are not escaped
+	return strings.ReplaceAll(phone, "+", "+")
 }
 
 func copyDir(src string, dst string) error {
