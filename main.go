@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/nyaruka/phonenumbers"
@@ -34,7 +35,11 @@ func getOrPrompt(value, prompt string) string {
 	}
 	fmt.Print(prompt)
 	reader := bufio.NewReader(os.Stdin)
-	input, _ := reader.ReadString('\n')
+	input, err := reader.ReadString('\n')
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
+		os.Exit(1)
+	}
 	return strings.TrimSpace(input)
 }
 
@@ -96,63 +101,90 @@ func copyDir(src string, dst string) error {
 
 // Get Outlook signature directory
 func getOutlookSignatureDir() (string, error) {
-	appData := os.Getenv("APPDATA")
-	if appData == "" {
-		return "", fmt.Errorf("APPDATA environment variable not found")
+	var sigDir string
+	switch runtime.GOOS {
+	case "windows":
+		appData := os.Getenv("APPDATA")
+		if appData == "" {
+			return "", fmt.Errorf("APPDATA environment variable not found")
+		}
+		sigDir = filepath.Join(appData, "Microsoft", "Signatures")
+	case "darwin":
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("failed to get user home directory: %v", err)
+		}
+		sigDir = filepath.Join(homeDir, "Library", "Group Containers", "UBF8T346G9.Office", "Outlook", "Outlook 15 Profiles", "Main Profile", "Signatures")
+	default:
+		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
-	return filepath.Join(appData, "Microsoft", "Signatures"), nil
+
+	// Create the directory if it doesn't exist
+	if err := os.MkdirAll(sigDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create signature directory: %v", err)
+	}
+
+	return sigDir, nil
 }
 
 func installSignature(data SignatureData, sigName string) error {
 	exeDir, err := getExecutableDir()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get executable directory: %v", err)
 	}
+
 	templateBase := filepath.Join(exeDir, "templates")
+	if _, err := os.Stat(templateBase); os.IsNotExist(err) {
+		return fmt.Errorf("templates directory not found at %s", templateBase)
+	}
+
 	sigDir, err := getOutlookSignatureDir()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get signature directory: %v", err)
 	}
+
 	fmt.Println("Installing signature to:", sigDir)
 	extensions := []string{".htm", ".txt"}
+	var errors []error
 
 	for _, ext := range extensions {
 		templatePath := filepath.Join(templateBase, sigName+ext)
 		destPath := filepath.Join(sigDir, sigName+ext)
 
+		// Check if template exists
+		if _, err := os.Stat(templatePath); os.IsNotExist(err) {
+			errors = append(errors, fmt.Errorf("template file not found: %s", templatePath))
+			continue
+		}
+
 		// Create a new template and register the custom function
 		funcMap := template.FuncMap{
-			"unescape": unescapePhoneNumber, // Register unescape function
+			"unescape": unescapePhoneNumber,
 		}
 
 		tpl, err := template.New(sigName).Funcs(funcMap).ParseFiles(templatePath)
 		if err != nil {
-			fmt.Printf("Failed to parse %s: %v\n", templatePath, err)
+			errors = append(errors, fmt.Errorf("failed to parse %s: %v", templatePath, err))
 			continue
 		}
 
 		var buf bytes.Buffer
-		err = tpl.Execute(&buf, data)
-		if err != nil {
-			fmt.Printf("Failed to execute template %s: %v\n", templatePath, err)
+		if err := tpl.Execute(&buf, data); err != nil {
+			errors = append(errors, fmt.Errorf("failed to execute template %s: %v", templatePath, err))
 			continue
 		}
 
-		content := buf.String()
-		
-		err = os.WriteFile(destPath, []byte(content), 0644)
-		if err != nil {
-			fmt.Printf("Failed to write %s: %v\n", destPath, err)
+		if err := os.WriteFile(destPath, buf.Bytes(), 0644); err != nil {
+			errors = append(errors, fmt.Errorf("failed to write %s: %v", destPath, err))
 			continue
 		}
-		
+
 		if ext == ".htm" {
 			imageDirSrc := filepath.Join(templateBase, sigName+"_files")
 			imageDirDst := filepath.Join(sigDir, sigName+"_files")
 			if _, err := os.Stat(imageDirSrc); err == nil {
-				err := copyDir(imageDirSrc, imageDirDst)
-				if err != nil {
-					fmt.Printf("Failed to copy image folder: %v\n", err)
+				if err := copyDir(imageDirSrc, imageDirDst); err != nil {
+					errors = append(errors, fmt.Errorf("failed to copy image folder: %v", err))
 				} else {
 					fmt.Printf("Copied image assets to %s\n", imageDirDst)
 				}
@@ -162,12 +194,33 @@ func installSignature(data SignatureData, sigName string) error {
 		fmt.Printf("Created: %s\n", destPath)
 	}
 
+	if len(errors) > 0 {
+		return fmt.Errorf("encountered %d errors during installation: %v", len(errors), errors)
+	}
+
 	return nil
 }
 
+func validateEmail(email string) error {
+	if !strings.Contains(email, "@") || !strings.Contains(email, ".") {
+		return fmt.Errorf("invalid email format")
+	}
+	return nil
+}
 
-func main() {
-	app := &cli.App{
+func validatePhoneNumber(phone string) error {
+	if phone == "" {
+		return fmt.Errorf("phone number cannot be empty")
+	}
+	// Basic validation - you might want to add more specific rules
+	if len(phone) < 5 {
+		return fmt.Errorf("phone number is too short")
+	}
+	return nil
+}
+
+func createCLIApp() *cli.App {
+	return &cli.App{
 		Name:  "Outlook Signature Installer",
 		Usage: "Install a predefined Outlook signature with personal info",
 		Description: `This tool installs Microsoft Outlook signatures from templates.
@@ -196,18 +249,33 @@ Images and .htm/.txt files are copied and filled automatically.`,
 				Aliases: []string{"p"},
 				Usage:   "Your phone number",
 			},
-            &cli.StringFlag{
-                Name:    "sig",
-                Aliases: []string{"s"},
-                Usage:   "Signature base filename",
-                Value:   "OutlookSignature",
-            },
+			&cli.StringFlag{
+				Name:    "sig",
+				Aliases: []string{"s"},
+				Usage:   "Signature base filename",
+				Value:   "OutlookSignature",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			name := getOrPrompt(c.String("name"), "Enter your name: ")
+			if name == "" {
+				return fmt.Errorf("name cannot be empty")
+			}
+
 			email := getOrPrompt(c.String("email"), "Enter your email: ")
+			if err := validateEmail(email); err != nil {
+				return fmt.Errorf("invalid email: %v", err)
+			}
+
 			phone := getOrPrompt(c.String("phone"), "Enter your phone number: ")
+			if err := validatePhoneNumber(phone); err != nil {
+				return fmt.Errorf("invalid phone number: %v", err)
+			}
+
 			sigName := c.String("sig")
+			if strings.ContainsAny(sigName, `/\:*?"<>|`) {
+				return fmt.Errorf("invalid signature name: contains invalid characters")
+			}
 
 			phoneDisplay, phoneLink, err := formatPhoneNumber(phone, "DE")
 			if err != nil {
@@ -226,7 +294,10 @@ Images and .htm/.txt files are copied and filled automatically.`,
 			return installSignature(data, sigName)
 		},
 	}
+}
 
+func main() {
+	app := createCLIApp()
 	err := app.Run(os.Args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
