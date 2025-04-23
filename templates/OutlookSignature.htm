@@ -1,4 +1,5 @@
-<html>
+<!DOCTYPE html>
+<html lang="de">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="Generator" content="Microsoft Word 15 (filtered)" />
@@ -27,28 +28,28 @@
       div.MsoNormal {
         margin: 0cm;
         font-size: 11.0pt;
-        font-family: "Aptos", sans-serif;
+        font-family: "Aptos", "Segoe UI", Arial, sans-serif;
       }
       p.MsoNormalEnvironment {
         margin: 0cm;
         font-size: 8.0pt;
         color: #4ea72e;
-        font-family: "Aptos", sans-serif;
+        font-family: "Aptos", "Segoe UI", Arial, sans-serif;
       }
       p.MsoNormalBoard {
         margin: 0cm;
         font-size: 9.0pt;
-        font-family: "Aptos", sans-serif;
+        font-family: "Aptos", "Segoe UI", Arial, sans-serif;
       }
       p.MsoNormalAddress {
         margin: 0cm;
         font-size: 9.0pt;
-        font-family: "Aptos", sans-serif;
+        font-family: "Aptos", "Segoe UI", Arial, sans-serif;
       }
       p.MsoNormalLink {
         margin: 0cm;
         font-size: 10.0pt;
-        font-family: "Aptos", sans-serif;
+        font-family: "Aptos", "Segoe UI", Arial, sans-serif;
         color: black;
         text-decoration: none;
       }
@@ -56,7 +57,7 @@
         margin: 0cm;
         font-size: 11.0pt;
         font-weight: bold;
-        font-family: "Aptos", sans-serif;
+        font-family: "Aptos", "Segoe UI", Arial, sans-serif;
       }
 
       a:link,
@@ -89,144 +90,127 @@
 
       <p class="MsoNormal"><span style="font-size: 11pt">&nbsp;</span></p>
 
-      <table class="MsoNormalTable">
+      <table class="MsoNormalTable" role="presentation">
         <tr>
-          <td
-            width="215"
-            colspan="5"
-            valign="top"
-            style="padding-bottom: 5.4pt"
-          >
+          <td width="215" colspan="5" valign="top" style="padding-bottom: 5.4pt">
             <p class="MsoNormal">
-              <span style="font-size: 9pt"
-                ><img
+              <span style="font-size: 9pt">
+                <img
                   width="200"
                   height="50"
                   id="Picture 1"
                   src="OutlookSignature_files/image001.png"
-                  alt="TÜV brand"
-              /></span>
+                  alt="TÜV Rheinland Logo"
+                />
+              </span>
             </p>
           </td>
-          <td
-            width="7"
-            valign="top"
-            style="
-              border: none;
-              border-right: solid windowtext 1pt;
-              padding-bottom: 5.4pt;
-            "
-          >
-            <p class="MsoNormal">
-              <span style="font-size: 9pt">&nbsp;</span>
-            </p>
+          <td width="7" valign="top" style="border: none; border-right: solid var(--border-color) 1pt; padding-bottom: 5.4pt;">
+            <p class="MsoNormal"><span style="font-size: 9pt">&nbsp;</span></p>
           </td>
-          <td
-            width="211"
-            valign="top"
-            style="border: none; padding-bottom: 5.4pt; padding-left: 5.4pt"
-          >
+          <td width="211" valign="top" style="border: none; padding-bottom: 5.4pt; padding-left: 5.4pt">
             <p class="MsoNormalName">
               <span lang="EN-US">{{ .Name }}</span>
             </p>
             <p class="MsoNormalLink">
-              <span>&#9993;&nbsp;</span
-              ><a href="mailto:{{ .Email }}"><span>{{ .Email }}</span></a>
+              <span aria-hidden="true">&#9993;&nbsp;</span>
+              <a href="mailto:{{ .Email }}" aria-label="Email {{ .Email }}">
+                <span>{{ .Email }}</span>
+              </a>
             </p>
             <p class="MsoNormalLink">
-              <span>&#9743;&nbsp;</span
-              ><a href="tel:{{.PhoneLink}}"><span>{{.PhoneDisplay}}</span></a>
+              <span aria-hidden="true">&#9743;&nbsp;</span>
+              <a href="tel:{{.PhoneLink}}" aria-label="Phone {{.PhoneDisplay}}">
+                <span>{{.PhoneDisplay}}</span>
+              </a>
             </p>
           </td>
         </tr>
         <tr>
           <td width="43">
             <p class="MsoNormal">
-              <a href="https://www.facebook.com/tuevkarriere/?locale=de_DE"
-                ><span style="font-size: 9pt; text-decoration: none"
-                  ><img
+              <a href="https://www.facebook.com/tuevkarriere/?locale=de_DE" aria-label="Visit TÜV Rheinland on Facebook">
+                <span style="font-size: 9pt; text-decoration: none">
+                  <img
                     border="0"
                     width="26"
                     height="26"
                     id="Picture 2"
                     src="OutlookSignature_files/image002.png"
-                    alt="facebook" /></span
-              ></a>
+                    alt="Facebook"
+                  />
+                </span>
+              </a>
             </p>
           </td>
           <td width="43">
             <p class="MsoNormal">
-              <a
-                href="https://twitter.com/tuvcom_presse?ref_src=twsrc%5Egoogle%7Ctwcamp%5Eserp%7Ctwgr%5Eauthor"
-                ><span style="font-size: 9pt; text-decoration: none"
-                  ><img
+              <a href="https://twitter.com/tuvcom_presse" aria-label="Follow TÜV Rheinland on Twitter">
+                <span style="font-size: 9pt; text-decoration: none">
+                  <img
                     border="0"
                     width="26"
                     height="26"
                     id="Picture 3"
                     src="OutlookSignature_files/image003.png"
-                    alt="twitter" /></span
-              ></a>
+                    alt="Twitter"
+                  />
+                </span>
+              </a>
             </p>
           </td>
           <td width="43">
             <p class="MsoNormal">
-              <a href="https://www.linkedin.com/company/tuv-rheinland-group/"
-                ><span style="font-size: 9pt; text-decoration: none"
-                  ><img
+              <a href="https://www.linkedin.com/company/tuv-rheinland-group/" aria-label="Connect with TÜV Rheinland on LinkedIn">
+                <span style="font-size: 9pt; text-decoration: none">
+                  <img
                     border="0"
                     width="26"
                     height="26"
                     id="Picture 4"
                     src="OutlookSignature_files/image004.png"
-                    alt="linkedin" /></span
-              ></a>
+                    alt="LinkedIn"
+                  />
+                </span>
+              </a>
             </p>
           </td>
           <td width="43">
             <p class="MsoNormal">
-              <a
-                href="https://z-p42.www.instagram.com/accounts/login/?next=/tuv.rheinland/"
-                ><span style="font-size: 9pt; text-decoration: none"
-                  ><img
+              <a href="https://www.instagram.com/tuv.rheinland/" aria-label="Follow TÜV Rheinland on Instagram">
+                <span style="font-size: 9pt; text-decoration: none">
+                  <img
                     border="0"
                     width="26"
                     height="26"
                     id="Picture 5"
                     src="OutlookSignature_files/image005.png"
-                    alt="instagram" /></span
-              ></a>
+                    alt="Instagram"
+                  />
+                </span>
+              </a>
             </p>
           </td>
           <td width="43">
             <p class="MsoNormal">
-              <a href="https:/www.xing.com/companies/tuvrheinland"
-                ><span style="font-size: 9pt; text-decoration: none"
-                  ><img
+              <a href="https://www.xing.com/companies/tuvrheinland" aria-label="Connect with TÜV Rheinland on Xing">
+                <span style="font-size: 9pt; text-decoration: none">
+                  <img
                     border="0"
                     width="26"
                     height="26"
                     id="Picture 6"
                     src="OutlookSignature_files/image006.png"
-                    alt="instagram" /></span
-              ></a>
+                    alt="Xing"
+                  />
+                </span>
+              </a>
             </p>
           </td>
-          <td
-            width="7"
-            valign="top"
-            style="border: none; border-right: solid windowtext 1pt"
-          >
-            <p class="MsoNormal">
-              <span style="font-size: 9pt">&nbsp;</span>
-            </p>
+          <td width="7" valign="top" style="border: none; border-right: solid var(--border-color) 1pt">
+            <p class="MsoNormal"><span style="font-size: 9pt">&nbsp;</span></p>
           </td>
-          <td
-            width="211"
-            rowspan="2"
-            valign="top"
-            style="padding-left: 5.4pt; border: none"
-          >
+          <td width="211" rowspan="2" valign="top" style="padding-left: 5.4pt; border: none">
             <p class="MsoNormalAddress">
               <span>TÜV Rheinland LGA Products GmbH </span>
             </p>
@@ -243,11 +227,12 @@
               <span lang="EN-US">Germany</span>
             </p>
             <p class="MsoNormalLink">
-              <span
-                >&#x1F310;&nbsp;<a href="https://www.tuv.com/" target="_blank"
-                  ><span lang="EN-US">www.tuv.com</span></a
-                ></span
-              >
+              <span>
+                <span aria-hidden="true">&#x1F310;&nbsp;</span>
+                <a href="https://www.tuv.com/" target="_blank" aria-label="Visit TÜV Rheinland website">
+                  <span lang="EN-US">www.tuv.com</span>
+                </a>
+              </span>
             </p>
           </td>
         </tr>
@@ -257,11 +242,7 @@
               <span lang="EN-US" style="font-size: 9pt">&nbsp;</span>
             </p>
           </td>
-          <td
-            width="7"
-            valign="top"
-            style="border: none; border-right: solid windowtext 1pt"
-          >
+          <td width="7" valign="top" style="border: none; border-right: solid var(--border-color) 1pt">
             <p class="MsoNormal">
               <span lang="EN-US" style="font-size: 9pt">&nbsp;</span>
             </p>
@@ -275,18 +256,7 @@
           </td>
         </tr>
         <tr>
-          <td
-            width="444"
-            colspan="7"
-            style="
-              border-top: solid windowtext 1pt;
-              border-left: none;
-              border-bottom: solid windowtext 1pt;
-              border-right: none;
-              padding-top: 5.4pt;
-              padding-bottom: 5.4pt;
-            "
-          >
+          <td width="444" colspan="7" style="border-top: solid var(--border-color) 1pt; border-left: none; border-bottom: solid var(--border-color) 1pt; border-right: none; padding-top: 5.4pt; padding-bottom: 5.4pt;">
             <p class="MsoNormalBoard">
               <span>Geschäftsführung/Board of Management </span>
             </p>
@@ -300,10 +270,7 @@
               <span>Nürnberg HRB 26013 </span>
             </p>
             <p class="MsoNormalBoard">
-              <span lang="EN-US"
-                >Vorsitzender des Aufsichtsrates/Chairman of the Supervisory
-                Board</span
-              >
+              <span lang="EN-US">Vorsitzender des Aufsichtsrates/Chairman of the Supervisory Board</span>
             </p>
             <p class="MsoNormalBoard">
               <span>Dr. Michael Fübi</span>
@@ -311,45 +278,33 @@
           </td>
         </tr>
         <tr>
-          <td
-            width="444"
-            colspan="7"
-            style="border: none; border-bottom: solid windowtext 1pt"
-          >
+          <td width="444" colspan="7" style="border: none; border-bottom: solid var(--border-color) 1pt">
             <p class="MsoNormalEnvironment">
-              <i
-                ><span lang="DE-DE"
-                  >Bitte denken Sie an die Umwelt, bevor Sie diese Nachricht
-                  drucken.
-                </span></i
-              >
+              <i>
+                <span lang="DE-DE">Bitte denken Sie an die Umwelt, bevor Sie diese Nachricht drucken.</span>
+              </i>
             </p>
             <p class="MsoNormalEnvironment">
-              <i
-                ><span lang="EN-US"
-                  >Before you print, please think about the environment.</span
-                ></i
-              >
+              <i>
+                <span lang="EN-US">Before you print, please think about the environment.</span>
+              </i>
             </p>
           </td>
         </tr>
         <tr>
-          <td
-            width="444"
-            colspan="7"
-            style="border: none; padding-top: 5.4pt; padding-bottom: 5.4pt"
-          >
+          <td width="444" colspan="7" style="border: none; padding-top: 5.4pt; padding-bottom: 5.4pt">
             <p class="MsoNormal">
-              <a
-                href="https://go.tuv.com/cyber-security-days-2025?wt_mc=Mailing.Email.Footer.DE25_P03_CYS.DE25_P03_CYS02_EF_01.teaser.&cpid=DE25_P03_CYS02_EF_01"
-                ><span style="font-size: 9pt; text-decoration: none"
-                  ><img
+              <a href="https://go.tuv.com/cyber-security-days-2025" aria-label="Learn more about Cyber Security Days 2025">
+                <span style="font-size: 9pt; text-decoration: none">
+                  <img
                     border="0"
                     width="444"
                     id="Picture 13"
                     src="OutlookSignature_files/image013.png"
-                    alt="cybersecurity" /></span
-              ></a>
+                    alt="Cyber Security Days 2025"
+                  />
+                </span>
+              </a>
             </p>
           </td>
         </tr>
