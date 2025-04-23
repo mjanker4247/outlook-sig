@@ -113,9 +113,27 @@ func getOrPrompt(value, prompt string) string {
 }
 
 func validateEmail(email string) error {
-	if !strings.Contains(email, "@") || !strings.Contains(email, ".") {
+	if email == "" {
+		return fmt.Errorf("email cannot be empty")
+	}
+
+	// Check for @ symbol
+	atIndex := strings.Index(email, "@")
+	if atIndex == -1 || atIndex == 0 || atIndex == len(email)-1 {
 		return fmt.Errorf("invalid email format")
 	}
+
+	// Check for domain
+	domain := email[atIndex+1:]
+	if !strings.Contains(domain, ".") {
+		return fmt.Errorf("invalid email format")
+	}
+
+	// Check for valid characters
+	if strings.ContainsAny(email, " ") {
+		return fmt.Errorf("invalid email format")
+	}
+
 	return nil
 }
 
