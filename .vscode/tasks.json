@@ -1,17 +1,100 @@
 {
     "version": "2.0.0",
     "tasks": [
-      {
-        "label": "Build Signature Installer",
-        "type": "shell",
-        "command": "go build -o signature-installer.exe",
-        "group": {
-          "kind": "build",
-          "isDefault": true
+        {
+            "label": "Build: Clean",
+            "type": "shell",
+            "command": "make clean",
+            "group": "build",
+            "problemMatcher": []
         },
-        "problemMatcher": [],
-        "detail": "Compiles the Go program into signature-installer.exe"
-      }
+        {
+            "label": "Build: Dependencies",
+            "type": "shell",
+            "command": "make deps",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Copy Assets: macOS",
+            "type": "shell",
+            "command": "mkdir -p build/mac && cp -r assets/* build/mac/",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Copy Assets: Windows",
+            "type": "shell",
+            "command": "mkdir -p build/win && cp -r assets/* build/win/",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build: macOS",
+            "type": "shell",
+            "command": "make build-mac",
+            "group": "build",
+            "dependsOn": ["Copy Assets: macOS"],
+            "problemMatcher": [
+                {
+                    "owner": "go",
+                    "fileLocation": ["relative", "${workspaceFolder}"],
+                    "pattern": {
+                        "regexp": "^([^:]*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                        "file": 1,
+                        "line": 2,
+                        "column": 3,
+                        "severity": 4,
+                        "message": 5
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Build: Windows",
+            "type": "shell",
+            "command": "make build-win",
+            "group": "build",
+            "dependsOn": ["Copy Assets: Windows"],
+            "problemMatcher": [
+                {
+                    "owner": "go",
+                    "fileLocation": ["relative", "${workspaceFolder}"],
+                    "pattern": {
+                        "regexp": "^([^:]*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                        "file": 1,
+                        "line": 2,
+                        "column": 3,
+                        "severity": 4,
+                        "message": 5
+                    }
+                }
+            ]
+        },
+        {
+            "label": "Build: All Platforms",
+            "type": "shell",
+            "command": "make build-all",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": ["Copy Assets: macOS", "Copy Assets: Windows"],
+            "problemMatcher": [
+                {
+                    "owner": "go",
+                    "fileLocation": ["relative", "${workspaceFolder}"],
+                    "pattern": {
+                        "regexp": "^([^:]*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                        "file": 1,
+                        "line": 2,
+                        "column": 3,
+                        "severity": 4,
+                        "message": 5
+                    }
+                }
+            ]
+        }
     ]
-  }
+}
   
