@@ -1,0 +1,23 @@
+﻿Freundliche Grüße/Best regards,
+
+{{ .Name }}
+{{ .Email }}
+Phone {{ .PhoneDisplay | unescape }}
+
+TÜV Rheinland LGA Products GmbH 
+TÜV Rheinland Group
+Tillystr. 2
+90431 Nürnberg
+Germany
+www.tuv.com
+
+Geschäftsführung/Board of Management 
+Dipl.-Ing. Thomas Weigand (Sprecher) 
+Dipl.-Kfm. Dr. Jörg Schlösser
+
+Nürnberg HRB 26013 
+
+Vorsitzender des Aufsichtsrates/Chairman of the Supervisory Board
+Dr. Michael Fübi
+Bitte denken Sie an die Umwelt, bevor Sie diese Nachricht drucken. 
+Before you print, please think about the environment.

@@ -1,26 +1,17 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "Create Installer",
-      "type": "shell",
-      "command": "C:\\private\\apps\\NSIS\\makensis.exe",
-      "args": [
-        "/V3",
-        "${workspaceFolder}\\nsis_script.nsi"
-      ],
-      "group": "build"
-    },
-    {
-      "label": "Create Installer (strict)",
-      "type": "shell",
-      "command": "C:\\private\\apps\\NSIS\\makensis.exe",
-      "args": [
-        "/V3",
-        "/WX",
-        "${workspaceFolder}\\nsis_script.nsi"
-      ],
-      "group": "build"
-    }
-  ]
-}
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Build Signature Installer",
+        "type": "shell",
+        "command": "go build -o signature-installer.exe",
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "problemMatcher": [],
+        "detail": "Compiles the Go program into signature-installer.exe"
+      }
+    ]
+  }
+  
