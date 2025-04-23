@@ -47,7 +47,7 @@ Images and .htm/.txt files are copied and filled automatically.`,
 			&cli.StringFlag{
 				Name:    "template",
 				Aliases: []string{"s"},
-				Usage:   "Signature base filename",
+				Usage:   "Base filename of signature template",
 				Value:   "OutlookSignature",
 			},
 		},
