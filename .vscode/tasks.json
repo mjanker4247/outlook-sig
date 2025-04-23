@@ -18,14 +18,32 @@
         {
             "label": "Copy Assets: macOS",
             "type": "shell",
-            "command": "mkdir -p build/mac && cp -r assets/* build/mac/",
+            "command": "${command:extension.commandvariable.workspace.isWindows}",
+            "windows": {
+                "command": "if not exist build\\mac mkdir build\\mac && xcopy /E /I /Y assets\\* build\\mac\\"
+            },
+            "linux": {
+                "command": "mkdir -p build/mac && cp -r assets/* build/mac/"
+            },
+            "osx": {
+                "command": "mkdir -p build/mac && cp -r assets/* build/mac/"
+            },
             "group": "build",
             "problemMatcher": []
         },
         {
             "label": "Copy Assets: Windows",
             "type": "shell",
-            "command": "mkdir -p build/win && cp -r assets/* build/win/",
+            "command": "${command:extension.commandvariable.workspace.isWindows}",
+            "windows": {
+                "command": "if not exist build\\win mkdir build\\win && xcopy /E /I /Y assets\\* build\\win\\"
+            },
+            "linux": {
+                "command": "mkdir -p build/win && cp -r assets/* build/win/"
+            },
+            "osx": {
+                "command": "mkdir -p build/win && cp -r assets/* build/win/"
+            },
             "group": "build",
             "problemMatcher": []
         },
