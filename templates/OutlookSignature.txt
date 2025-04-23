@@ -2,7 +2,7 @@
 
 {{ .Name }}
 {{ .Email }}
-Phone {{ .PhoneDisplay | unescape }}
+Phone {{ .PhoneDisplay | unescapePhoneNumber }}
 
 TÜV Rheinland LGA Products GmbH 
 TÜV Rheinland Group
