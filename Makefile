@@ -10,7 +10,7 @@ ASSETS_DIR=assets
 
 # Detect OS
 ifeq ($(OS),Windows_NT)
-    MKDIR=mkdir
+    MKDIR=mkdir /p
     RMDIR=rmdir /S /Q
     CP=copy
     RM=del /Q /F
