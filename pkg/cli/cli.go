@@ -45,7 +45,7 @@ Images and .htm/.txt files are copied and filled automatically.`,
 				Usage:   "Your phone number",
 			},
 			&cli.StringFlag{
-				Name:    "sig",
+				Name:    "template",
 				Aliases: []string{"s"},
 				Usage:   "Signature base filename",
 				Value:   "OutlookSignature",
@@ -67,7 +67,7 @@ Images and .htm/.txt files are copied and filled automatically.`,
 				return fmt.Errorf("invalid phone number: %v", err)
 			}
 
-			sigName := c.String("sig")
+			sigName := c.String("template")
 			if strings.ContainsAny(sigName, `/\:*?"<>|`) {
 				return fmt.Errorf("invalid signature name: contains invalid characters")
 			}

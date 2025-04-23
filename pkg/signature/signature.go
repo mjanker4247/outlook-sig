@@ -59,6 +59,14 @@ func (i *Installer) Install(data Data, sigName string) error {
 		return fmt.Errorf("templates directory not found at %s", i.TemplateBase)
 	}
 
+	// Validate template name
+	if sigName == "" {
+		return fmt.Errorf("template name cannot be empty")
+	}
+	if strings.ContainsAny(sigName, `/\:*?"<>|`) {
+		return fmt.Errorf("invalid template name: contains invalid characters")
+	}
+
 	var sigDir string
 	var err error
 	if i.sigDir != "" {
