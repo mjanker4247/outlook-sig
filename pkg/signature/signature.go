@@ -97,7 +97,7 @@ func (i *Installer) Install(data Data, sigName string) error {
 		}
 
 		funcMap := template.FuncMap{
-			"unescape": unescapePhoneNumber,
+			"unescapePhoneNumber": unescapePhoneNumber,
 		}
 
 		// Use html/template for both file types to ensure consistent escaping
@@ -141,10 +141,13 @@ func (i *Installer) Install(data Data, sigName string) error {
 }
 
 func unescapePhoneNumber(phone string) string {
-	// First replace HTML entity
+	// Replace HTML entity for plus sign
 	phone = strings.ReplaceAll(phone, "&#43;", "+")
-	// Then ensure any remaining + signs are not escaped
-	return strings.ReplaceAll(phone, "+", "+")
+	// Replace any escaped plus signs
+	phone = strings.ReplaceAll(phone, "\\+", "+")
+	// Replace any remaining escaped plus signs
+	phone = strings.ReplaceAll(phone, "&plus;", "+")
+	return phone
 }
 
 func copyDir(src string, dst string) error {

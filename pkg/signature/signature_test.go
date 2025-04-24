@@ -4,21 +4,50 @@ import (
 	"testing"
 )
 
-func TestPhoneNumberUnescape(t *testing.T) {
+func TestUnescapePhoneNumber(t *testing.T) {
 	tests := []struct {
+		name     string
 		input    string
 		expected string
 	}{
-		{"&#43;49123456789", "+49123456789"},
-		{"+49123456789", "+49123456789"},
-		{"&#43;49 123 456789", "+49 123 456789"},
-		{"", ""},
+		{
+			name:     "HTML entity &#43;",
+			input:    "+49 123 4567890",
+			expected: "+49 123 4567890",
+		},
+		{
+			name:     "Escaped plus sign",
+			input:    "\\+49 123 4567890",
+			expected: "+49 123 4567890",
+		},
+		{
+			name:     "HTML entity &plus;",
+			input:    "&plus;49 123 4567890",
+			expected: "+49 123 4567890",
+		},
+		{
+			name:     "Multiple escaped characters",
+			input:    "&#43;49 123 4567890",
+			expected: "+49 123 4567890",
+		},
+		{
+			name:     "No escaping needed",
+			input:    "+49 123 4567890",
+			expected: "+49 123 4567890",
+		},
+		{
+			name:     "Empty string",
+			input:    "",
+			expected: "",
+		},
 	}
 
-	for _, test := range tests {
-		result := unescapePhoneNumber(test.input)
-		if result != test.expected {
-			t.Errorf("unescapePhoneNumber(%q) = %q, want %q", test.input, result, test.expected)
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := unescapePhoneNumber(tt.input)
+			if result != tt.expected {
+				t.Errorf("unescapePhoneNumber(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
 	}
 }
