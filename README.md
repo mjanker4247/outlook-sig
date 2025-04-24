@@ -15,6 +15,7 @@ A command-line tool to install and manage email signatures in Microsoft Outlook 
 - Go 1.16 or later
 - Microsoft Outlook installed
 - Git (for cloning the repository)
+- Make
 
 ## Installation
 
@@ -24,45 +25,25 @@ git clone https://git.ululuu.de/jankerm/outlook-signature.git
 cd outlook-signature
 ```
 
-2. Install dependencies:
-```bash
-make deps
-```
-
 ## Building
 
 The project includes a Makefile for easy building on different platforms:
 
-### Build for macOS
-```bash
-make build-mac
-```
-
-### Build for Windows
-```bash
-make build-win
-```
-
 ### Build for all platforms
 ```bash
-make build-all
+make all
 ```
 
 The built binaries will be available in the `build/` directory:
-- macOS: `build/mac/signature-installer`
-- Windows: `build/win/signature-installer.exe`
+- macOS: `build/signature-installer`
+- Windows: `build/signature-installer.exe`
 
 ## Usage
 
 After building, you can run the program with:
 
 ```bash
-./build/mac/signature-installer [options]
-```
-
-or on Windows:
-```bash
-.\build\win\signature-installer.exe [options]
+SignatureInstaller[.exe] [options]
 ```
 
 ### Command Line Options
@@ -74,7 +55,7 @@ or on Windows:
 
 Example:
 ```bash
-./signature-installer --name "John Doe" --email "john.doe@example.com" --phone "+49123456789"
+SignatureInstaller[.exe] --name "John Doe" --email "john.doe@example.com" --phone "+49123456789"
 ```
 
 ## Templates
