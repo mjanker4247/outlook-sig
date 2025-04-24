@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 )
@@ -53,18 +54,48 @@ func GetOutlookSignatureDir() (string, error) {
 	}
 }
 
+// Replaces placeholders like {{ .Name }} or {{.Name}} etc.
+func replacePlaceholders(templateOrPath string, data Data) (string, error) {
+	var content string
+
+	// Check if the input is a file
+	if _, err := os.Stat(templateOrPath); err == nil {
+		// Read the template file
+		templateContent, err := os.ReadFile(templateOrPath)
+		if err != nil {
+			return "", fmt.Errorf("Failed to read template file %s: %v", templateOrPath, err)
+		}
+		content = string(templateContent)
+	} else {
+		content = templateOrPath
+	}
+
+	values := map[string]string{
+		"Name":         data.Name,
+		"Email":        data.Email,
+		"PhoneDisplay": data.PhoneDisplay,
+		"PhoneLink":    data.PhoneLink,
+	}
+
+	for key, val := range values {
+		pattern := regexp.MustCompile(`{{\s*\.` + regexp.QuoteMeta(key) + `\s*}}`)
+		content = pattern.ReplaceAllString(content, val)
+	}
+	return content, nil
+}
+
 // Install installs a signature with the given data
 func (i *Installer) Install(data Data, sigName string) error {
 	if _, err := os.Stat(i.TemplateBase); os.IsNotExist(err) {
-		return fmt.Errorf("templates directory not found at %s", i.TemplateBase)
+		return fmt.Errorf("Templates directory not found at %s", i.TemplateBase)
 	}
 
 	// Validate template name
 	if sigName == "" {
-		return fmt.Errorf("template name cannot be empty")
+		return fmt.Errorf("Template name cannot be empty")
 	}
 	if strings.ContainsAny(sigName, `/\:*?"<>|`) {
-		return fmt.Errorf("invalid template name: contains invalid characters")
+		return fmt.Errorf("Invalid template name: contains invalid characters")
 	}
 
 	var sigDir string
@@ -74,13 +105,13 @@ func (i *Installer) Install(data Data, sigName string) error {
 	} else {
 		sigDir, err = GetOutlookSignatureDir()
 		if err != nil {
-			return fmt.Errorf("failed to get signature directory: %v", err)
+			return fmt.Errorf("Failed to get signature directory: %v", err)
 		}
 	}
 
 	// Create the signature directory if it doesn't exist
 	if err := os.MkdirAll(sigDir, 0755); err != nil {
-		return fmt.Errorf("failed to create signature directory: %v", err)
+		return fmt.Errorf("Failed to create signature directory: %v", err)
 	}
 
 	fmt.Println("Installing signature to:", sigDir)
@@ -92,62 +123,63 @@ func (i *Installer) Install(data Data, sigName string) error {
 		destPath := filepath.Join(sigDir, sigName+ext)
 
 		if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-			errors = append(errors, fmt.Errorf("template file not found: %s", templatePath))
-			continue
-		}
-
-		funcMap := template.FuncMap{
-			"unescapePhoneNumber": unescapePhoneNumber,
-		}
-
-		// Use html/template for both file types to ensure consistent escaping
-		tpl, err := template.New(filepath.Base(templatePath)).Funcs(funcMap).ParseFiles(templatePath)
-		if err != nil {
-			errors = append(errors, fmt.Errorf("failed to parse %s: %v", templatePath, err))
-			continue
-		}
-
-		var buf bytes.Buffer
-		if err := tpl.Execute(&buf, data); err != nil {
-			errors = append(errors, fmt.Errorf("failed to execute template %s: %v", templatePath, err))
-			continue
-		}
-
-		if err := os.WriteFile(destPath, buf.Bytes(), 0644); err != nil {
-			errors = append(errors, fmt.Errorf("failed to write %s: %v", destPath, err))
+			errors = append(errors, fmt.Errorf("Template file not found: %s", templatePath))
 			continue
 		}
 
 		if ext == ".htm" {
+			// Use html/template
+			tpl, err := template.New(filepath.Base(templatePath)).ParseFiles(templatePath)
+			if err != nil {
+				errors = append(errors, fmt.Errorf("Failed to parse %s: %v", templatePath, err))
+				continue
+			}
+
+			var buf bytes.Buffer
+			if err := tpl.Execute(&buf, data); err != nil {
+				errors = append(errors, fmt.Errorf("Failed to execute template %s: %v", templatePath, err))
+				continue
+			}
+
+			if err := os.WriteFile(destPath, buf.Bytes(), 0644); err != nil {
+				errors = append(errors, fmt.Errorf("Failed to write %s: %v", destPath, err))
+				continue
+			}
 			imageDirSrc := filepath.Join(i.TemplateBase, sigName+"_files")
 			imageDirDst := filepath.Join(sigDir, sigName+"_files")
 			if _, err := os.Stat(imageDirSrc); err == nil {
 				if err := copyDir(imageDirSrc, imageDirDst); err != nil {
-					errors = append(errors, fmt.Errorf("failed to copy image folder: %v", err))
+					errors = append(errors, fmt.Errorf("Failed to copy image folder: %v", err))
 				} else {
 					fmt.Printf("Copied image assets to %s\n", imageDirDst)
 				}
 			}
+		} else if ext == ".txt" {
+			// Perform replacements
+			result, err := replacePlaceholders(templatePath, data)
+			if err != nil {
+				errors = append(errors, err)
+				continue
+			}
+
+			// Save the new file
+			err = os.WriteFile(destPath, []byte(result), 0644)
+			if err != nil {
+				errors = append(errors, fmt.Errorf("Failed to write file %s: %v", destPath, err))
+				continue
+			}
+		} else {
+			errors = append(errors, fmt.Errorf("Unsupported file extension: %s", ext))
 		}
 
 		fmt.Printf("Created: %s\n", destPath)
 	}
 
 	if len(errors) > 0 {
-		return fmt.Errorf("encountered %d errors during installation: %v", len(errors), errors)
+		return fmt.Errorf("Encountered %d errors during installation: %v", len(errors), errors)
 	}
 
 	return nil
-}
-
-func unescapePhoneNumber(phone string) string {
-	// Replace HTML entity for plus sign
-	phone = strings.ReplaceAll(phone, "&#43;", "+")
-	// Replace any escaped plus signs
-	phone = strings.ReplaceAll(phone, "\\+", "+")
-	// Replace any remaining escaped plus signs
-	phone = strings.ReplaceAll(phone, "&plus;", "+")
-	return phone
 }
 
 func copyDir(src string, dst string) error {
