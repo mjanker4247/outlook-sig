@@ -12,7 +12,7 @@ SRC_DIR := ./cmd/signature-installer
 ifeq ($(OS),Windows_NT)
 	OS_NAME := windows
 	RM := del /Q /F
-	MKDIR := mkdir
+	MKDIR := if not exist
 	CP := xcopy /E /I /Y
 	SEP := \\
 	BINARY := $(BUILD_DIR)$(SEP)$(APP_NAME).exe
@@ -31,12 +31,12 @@ all: clean build copy-templates
 
 build:
 	@echo "==> Building $(APP_NAME) for $(OS_NAME)..."
-	@$(MKDIR) "$(BUILD_DIR)"
+	@$(MKDIR) "$(BUILD_DIR)" mkdir "$(BUILD_DIR)"
 	@go build -o "$(BINARY)" $(SRC_DIR)
 
 copy-templates:
 	@echo "==> Copying templates directory..."
-	@$(MKDIR) "$(BUILD_DIR)"
+	@$(MKDIR) "$(BUILD_DIR)" mkdir "$(BUILD_DIR)"
 	@$(CP) "$(TEMPLATES_DIR)" "$(BUILD_DIR)$(SEP)templates"
 
 run: build copy-templates
