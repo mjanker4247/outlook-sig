@@ -1,63 +1,38 @@
-.PHONY: build-mac build-win clean deps
+# Smart Makefile for Windows and Mac/Linux
 
-# Detect OS
+APP_NAME=SignatureInstaller
+BUILD_DIR=build
+TEMPLATE_DIR=templates
+SRC_DIR=./cmd/signature-installer
+OS := $(shell uname -s)
+
+# Set output binary based on OS
 ifeq ($(OS),Windows_NT)
-    MKDIR=mkdir /p
-    RMDIR=rmdir /S /Q
-    CP=copy
-    RM=del /Q /F
-    SEP=\\
-    EXE_EXT=.exe
+	BINARY=$(BUILD_DIR)/$(APP_NAME).exe
+	COPY=cmd /C "if not exist $(BUILD_DIR) mkdir $(BUILD_DIR) & xcopy /E /I /Y $(TEMPLATE_DIR) $(BUILD_DIR)\$(TEMPLATE_DIR)"
+	RM=cmd /C "if exist $(BUILD_DIR) rmdir /S /Q $(BUILD_DIR)"
 else
-    MKDIR=mkdir -p
-    RMDIR=rm -rf
-    CP=cp -r
-    RM=rm -f
-    SEP=/
-    EXE_EXT=
+	BINARY=$(BUILD_DIR)/$(APP_NAME)
+	COPY=mkdir -p $(BUILD_DIR)/$(TEMPLATE_DIR) && cp -r $(TEMPLATE_DIR)/* $(BUILD_DIR)/$(TEMPLATE_DIR)
+	RM=rm -rf $(BUILD_DIR)
 endif
 
-# Build configuration
-BINARY_NAME=signature-installer
-VERSION=1.0.0
-BUILD_DIR=build
-MAC_DIR=$(BUILD_DIR)$(SEP)mac
-WIN_DIR=$(BUILD_DIR)$(SEP)win
-ASSETS_DIR=assets
+.PHONY: all build clean run copy-templates
 
-# Install dependencies
-deps:
-	@echo "Installing dependencies..."
-	@go mod download
-	@echo "Dependencies installed"
+all: build copy-templates
 
-# Build for macOS
-build-mac: deps
-	@echo "Building for macOS..."
-	@$(MKDIR) $(MAC_DIR)
-	@GOOS=darwin GOARCH=amd64 go build -o $(MAC_DIR)$(SEP)$(BINARY_NAME)$(EXE_EXT) .$(SEP)cmd$(SEP)signature-installer
-	@$(MKDIR) $(MAC_DIR)$(SEP)$(ASSETS_DIR)
-	@$(CP) $(ASSETS_DIR)$(SEP)* $(MAC_DIR)$(SEP)$(ASSETS_DIR)$(SEP)
-	@echo "Build complete. Output in $(MAC_DIR)"
+build:
+	@echo "==> Building $(APP_NAME) for $(OS)..."
+	@go build -o $(BINARY) $(SRC_DIR)
 
-# Build for Windows
-build-win: deps
-	@echo "Building for Windows..."
-	@$(MKDIR) $(WIN_DIR)
-	go build -o $(WIN_DIR)$(SEP)$(BINARY_NAME).exe .$(SEP)cmd$(SEP)signature-installer
-	@$(MKDIR) $(WIN_DIR)$(SEP)$(ASSETS_DIR)
-	if exist $(ASSETS_DIR) xcopy /E /I /Y $(ASSETS_DIR)$(SEP)* $(WIN_DIR)$(SEP)$(ASSETS_DIR)$(SEP)
-	@echo "Build complete. Output in $(WIN_DIR)"
+copy-templates:
+	@echo "==> Copying templates directory..."
+	@$(COPY)
 
-# Build for all platforms
-build-all: build-mac build-win
-	@echo "Build complete for all platforms"
+run: build copy-templates
+	@echo "==> Running application..."
+	@$(BINARY)
 
-# Clean build artifacts
 clean:
-	@echo "Cleaning build artifacts..."
-	@$(RMDIR) $(BUILD_DIR)
-	@echo "Clean complete"
-
-# Default target
-all: build-all 
+	@echo "==> Cleaning up..."
+	@$(RM)
