@@ -27,7 +27,7 @@ endif
 
 .PHONY: all build clean run copy-templates
 
-all: clean build copy-templates
+build-all: clean build copy-templates
 
 build:
 	@echo "==> Building $(APP_NAME) for $(OS_NAME)..."

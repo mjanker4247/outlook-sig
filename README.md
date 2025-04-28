@@ -31,12 +31,12 @@ The project includes a Makefile for easy building on different platforms:
 
 ### Build for all platforms
 ```bash
-make all
+make build-all
 ```
 
 The built binaries will be available in the `build/` directory:
-- macOS: `build/signature-installer`
-- Windows: `build/signature-installer.exe`
+- macOS: `build/SignatureInstaller`
+- Windows: `build/SignatureInstaller.exe`
 
 ## Usage
 
