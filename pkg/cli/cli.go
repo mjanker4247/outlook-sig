@@ -27,7 +27,7 @@ Templates may include these placeholders
 {{ .PhoneDisplay }}
 	
 Images and .htm/.txt files are copied and filled automatically.`,
-		UsageText: "signature-installer.exe [global options]",
+		UsageText: "SignatureInstaller.exe [options]",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "name",
