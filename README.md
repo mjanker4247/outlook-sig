@@ -65,3 +65,14 @@ The program uses HTML and text templates located in the `templates/` directory. 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Sign
+
+osslsigncode sign \
+  -pkcs12 code-sign-certificate.pfx \
+  -askpass \
+  -n "Program Name" \
+  -i https://www.program-website.com \
+  -in program.exe \
+  -out program-signed.exe
+
