@@ -68,6 +68,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Sign
 
+```bash
 osslsigncode sign \
   -pkcs12 code-sign-certificate.pfx \
   -askpass \
@@ -75,4 +76,4 @@ osslsigncode sign \
   -i https://www.program-website.com \
   -in program.exe \
   -out program-signed.exe
-
+```
