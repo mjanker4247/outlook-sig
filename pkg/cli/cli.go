@@ -4,13 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
+	"outlook-signature/pkg/common"
 	"outlook-signature/pkg/gui"
 	"outlook-signature/pkg/signature"
 
-	"github.com/nyaruka/phonenumbers"
 	"github.com/urfave/cli/v2"
 )
 
@@ -70,21 +69,21 @@ Images and .htm/.txt files are copied and filled automatically.`,
 			}
 
 			email := getOrPrompt(c.String("email"), "Enter your email: ")
-			if err := validateEmail(email); err != nil {
+			if err := common.ValidateEmail(email); err != nil {
 				return fmt.Errorf("invalid email: %v", err)
 			}
 
 			phone := getOrPrompt(c.String("phone"), "Enter your phone number: ")
-			if err := validatePhoneNumber(phone); err != nil {
+			if err := common.ValidatePhoneNumber(phone); err != nil {
 				return fmt.Errorf("invalid phone number: %v", err)
 			}
 
 			sigName := c.String("template")
-			if strings.ContainsAny(sigName, `/\:*?"<>|`) {
-				return fmt.Errorf("invalid signature name: contains invalid characters")
+			if err := common.ValidateSignatureName(sigName); err != nil {
+				return err
 			}
 
-			phoneDisplay, phoneLink, err := formatPhoneNumber(phone, "DE")
+			phoneDisplay, phoneLink, err := common.FormatPhoneNumber(phone, "DE")
 			if err != nil {
 				fmt.Println("Warning: Could not format phone number. Using raw input.")
 				phoneDisplay = phone
@@ -98,11 +97,10 @@ Images and .htm/.txt files are copied and filled automatically.`,
 				PhoneLink:    phoneLink,
 			}
 
-			exeDir, err := os.Executable()
+			templateBase, err := common.GetTemplateBase()
 			if err != nil {
-				return fmt.Errorf("failed to get executable path: %v", err)
+				return err
 			}
-			templateBase := filepath.Join(filepath.Dir(exeDir), "templates")
 
 			installer := signature.NewInstaller(templateBase)
 			return installer.Install(data, sigName)
@@ -122,51 +120,4 @@ func getOrPrompt(value, prompt string) string {
 		os.Exit(1)
 	}
 	return strings.TrimSpace(input)
-}
-
-func validateEmail(email string) error {
-	if email == "" {
-		return fmt.Errorf("email cannot be empty")
-	}
-
-	// Check for @ symbol
-	atIndex := strings.Index(email, "@")
-	if atIndex == -1 || atIndex == 0 || atIndex == len(email)-1 {
-		return fmt.Errorf("invalid email format")
-	}
-
-	// Check for domain
-	domain := email[atIndex+1:]
-	if !strings.Contains(domain, ".") {
-		return fmt.Errorf("invalid email format")
-	}
-
-	// Check for valid characters
-	if strings.ContainsAny(email, " ") {
-		return fmt.Errorf("invalid email format")
-	}
-
-	return nil
-}
-
-func validatePhoneNumber(phone string) error {
-	if phone == "" {
-		return fmt.Errorf("phone number cannot be empty")
-	}
-	if len(phone) < 5 {
-		return fmt.Errorf("phone number is too short")
-	}
-	return nil
-}
-
-func formatPhoneNumber(phone string, countryCode string) (string, string, error) {
-	num, err := phonenumbers.Parse(phone, countryCode)
-	if err != nil {
-		return phone, phone, err
-	}
-
-	display := phonenumbers.Format(num, phonenumbers.INTERNATIONAL)
-	link := phonenumbers.Format(num, phonenumbers.E164)
-
-	return display, link, nil
 }

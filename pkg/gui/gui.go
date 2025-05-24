@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"outlook-signature/pkg/common"
 	"outlook-signature/pkg/signature"
 
 	"fyne.io/fyne/v2"
@@ -28,9 +29,40 @@ func ShowGUI() {
 	phoneEntry := widget.NewEntry()
 	phoneEntry.SetPlaceHolder("Your phone number")
 
+	// Get template base directory
+	templateBase, err := common.GetTemplateBase()
+	if err != nil {
+		dialog.ShowError(err, window)
+		return
+	}
+
+	// Create template selection components
 	templateEntry := widget.NewEntry()
-	templateEntry.SetPlaceHolder("Template name")
-	templateEntry.SetText("OutlookSignature")
+	templateEntry.SetText(templateBase)
+	templatePath := templateBase
+
+	// Create browse button
+	browseButton := widget.NewButton("Browse", func() {
+		dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
+			if err != nil {
+				dialog.ShowError(err, window)
+				return
+			}
+			if uri == nil {
+				return
+			}
+			templatePath = uri.Path()
+			templateEntry.SetText(templatePath)
+		}, window)
+	})
+
+	// Update templatePath when entry changes
+	templateEntry.OnChanged = func(path string) {
+		templatePath = path
+	}
+
+	// Create template selection container
+	templateContainer := container.NewBorder(nil, nil, nil, browseButton, templateEntry)
 
 	// Create form
 	form := &widget.Form{
@@ -38,28 +70,43 @@ func ShowGUI() {
 			{Text: "Name", Widget: nameEntry},
 			{Text: "Email", Widget: emailEntry},
 			{Text: "Phone", Widget: phoneEntry},
-			{Text: "Template", Widget: templateEntry},
+			{Text: "Template", Widget: templateContainer},
 		},
 		OnSubmit: func() {
-			// Get executable directory for templates
-			exeDir, err := filepath.Abs(".")
-			if err != nil {
-				dialog.ShowError(fmt.Errorf("failed to get executable path: %v", err), window)
+			// Validate inputs
+			if nameEntry.Text == "" {
+				dialog.ShowError(fmt.Errorf("name cannot be empty"), window)
 				return
 			}
-			templateBase := filepath.Join(exeDir, "templates")
+
+			if err := common.ValidateEmail(emailEntry.Text); err != nil {
+				dialog.ShowError(err, window)
+				return
+			}
+
+			if err := common.ValidatePhoneNumber(phoneEntry.Text); err != nil {
+				dialog.ShowError(err, window)
+				return
+			}
+
+			// Format phone number
+			phoneDisplay, phoneLink, err := common.FormatPhoneNumber(phoneEntry.Text, "DE")
+			if err != nil {
+				dialog.ShowError(fmt.Errorf("could not format phone number: %v", err), window)
+				return
+			}
 
 			// Create signature data
 			data := signature.Data{
 				Name:         nameEntry.Text,
 				Email:        emailEntry.Text,
-				PhoneDisplay: phoneEntry.Text,
-				PhoneLink:    phoneEntry.Text,
+				PhoneDisplay: phoneDisplay,
+				PhoneLink:    phoneLink,
 			}
 
 			// Install signature
-			installer := signature.NewInstaller(templateBase)
-			err = installer.Install(data, templateEntry.Text)
+			installer := signature.NewInstaller(templatePath)
+			err = installer.Install(data, filepath.Base(templatePath))
 			if err != nil {
 				dialog.ShowError(err, window)
 				return
@@ -76,6 +123,6 @@ func ShowGUI() {
 	)
 
 	window.SetContent(content)
-	window.Resize(fyne.NewSize(400, 300))
+	window.Resize(fyne.NewSize(500, 300))
 	window.ShowAndRun()
 }
