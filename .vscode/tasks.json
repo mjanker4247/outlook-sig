@@ -2,57 +2,11 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Build: Clean",
+            "label": "Build",
             "type": "shell",
-            "command": "make clean",
+            "command": "task",
+            "args": ["build"],
             "group": "build",
-            "problemMatcher": []
-        },
-        {
-            "label": "Build: Dependencies",
-            "type": "shell",
-            "command": "make deps",
-            "group": "build",
-            "problemMatcher": []
-        },
-        {
-            "label": "Copy Assets: macOS",
-            "type": "shell",
-            "command": "${command:extension.commandvariable.workspace.isWindows}",
-            "windows": {
-                "command": "if not exist build\\mac mkdir build\\mac && xcopy /E /I /Y assets\\* build\\mac\\"
-            },
-            "linux": {
-                "command": "mkdir -p build/mac && cp -r assets/* build/mac/"
-            },
-            "osx": {
-                "command": "mkdir -p build/mac && cp -r assets/* build/mac/"
-            },
-            "group": "build",
-            "problemMatcher": []
-        },
-        {
-            "label": "Copy Assets: Windows",
-            "type": "shell",
-            "command": "${command:extension.commandvariable.workspace.isWindows}",
-            "windows": {
-                "command": "if not exist build\\win mkdir build\\win && xcopy /E /I /Y assets\\* build\\win\\"
-            },
-            "linux": {
-                "command": "mkdir -p build/win && cp -r assets/* build/win/"
-            },
-            "osx": {
-                "command": "mkdir -p build/win && cp -r assets/* build/win/"
-            },
-            "group": "build",
-            "problemMatcher": []
-        },
-        {
-            "label": "Build: macOS",
-            "type": "shell",
-            "command": "make build-mac",
-            "group": "build",
-            "dependsOn": ["Copy Assets: macOS"],
             "problemMatcher": [
                 {
                     "owner": "go",
@@ -69,35 +23,42 @@
             ]
         },
         {
-            "label": "Build: Windows",
+            "label": "Clean",
             "type": "shell",
-            "command": "make build-win",
-            "group": "build",
-            "dependsOn": ["Copy Assets: Windows"],
-            "problemMatcher": [
-                {
-                    "owner": "go",
-                    "fileLocation": ["relative", "${workspaceFolder}"],
-                    "pattern": {
-                        "regexp": "^([^:]*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
-                        "file": 1,
-                        "line": 2,
-                        "column": 3,
-                        "severity": 4,
-                        "message": 5
-                    }
-                }
-            ]
+            "command": "task",
+            "args": ["clean"],
+            "group": "build"
         },
         {
-            "label": "Build: All Platforms",
+            "label": "Run",
             "type": "shell",
-            "command": "make build-all",
+            "command": "task",
+            "args": ["run"],
+            "group": "build"
+        },
+        {
+            "label": "Build Windows",
+            "type": "shell",
+            "command": "task",
+            "args": ["cross-build-windows"],
+            "group": "build"
+        },
+        {
+            "label": "Sign Windows",
+            "type": "shell",
+            "command": "task",
+            "args": ["sign-windows"],
+            "group": "build"
+        },
+        {
+            "label": "Build All",
+            "type": "shell",
+            "command": "task",
+            "args": ["default"],
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
-            "dependsOn": ["Copy Assets: macOS", "Copy Assets: Windows"],
             "problemMatcher": [
                 {
                     "owner": "go",

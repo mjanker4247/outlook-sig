@@ -7,11 +7,12 @@
         "request": "launch",
         "mode": "auto",
         "program": "${workspaceFolder}",
+        "preLaunchTask": "Build",
         "args": [
           "--name=John Doe",
           "--email=john.doe@example.com",
           "--phone=0151 12345678",
-          "--sig=OutlookSignature"
+          "--template=OutlookSignature"
         ],
         "env": {},
         "cwd": "${workspaceFolder}"

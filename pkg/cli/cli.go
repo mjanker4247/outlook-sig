@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"outlook-signature/pkg/gui"
 	"outlook-signature/pkg/signature"
 
 	"github.com/nyaruka/phonenumbers"
@@ -29,6 +30,11 @@ Templates may include these placeholders
 Images and .htm/.txt files are copied and filled automatically.`,
 		UsageText: "SignatureInstaller.exe [options]",
 		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "gui",
+				Aliases: []string{"g"},
+				Usage:   "Launch in GUI mode",
+			},
 			&cli.StringFlag{
 				Name:    "name",
 				Aliases: []string{"n"},
@@ -52,6 +58,12 @@ Images and .htm/.txt files are copied and filled automatically.`,
 			},
 		},
 		Action: func(c *cli.Context) error {
+			// Check if GUI mode is requested or no arguments are provided
+			if c.Bool("gui") || len(os.Args) == 1 {
+				gui.ShowGUI()
+				return nil
+			}
+
 			name := getOrPrompt(c.String("name"), "Enter your name: ")
 			if name == "" {
 				return fmt.Errorf("name cannot be empty")

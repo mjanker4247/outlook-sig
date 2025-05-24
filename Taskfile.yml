@@ -1,0 +1,65 @@
+version: '3'
+
+vars:
+  APP_NAME: SignatureInstaller
+  BUILD_DIR: build
+  TEMPLATES_DIR: templates
+  SRC_DIR: ./cmd/signature-installer
+  GUI_FLAGS: -tags fyne_gui
+  BINARY: '{{.BUILD_DIR}}/{{.APP_NAME}}{{if eq OS "windows"}}.exe{{end}}'
+  WINDOWS_BINARY: '{{.BUILD_DIR}}/windows/{{.APP_NAME}}.exe'
+  WINDOWS_SIGNED: '{{.BUILD_DIR}}/windows/{{.APP_NAME}}-signed.exe'
+
+tasks:
+  default:
+    desc: Build the application with all dependencies
+    cmds:
+      - task: deps
+      - task: clean
+      - task: build
+      - task: copy-templates
+
+  deps:
+    desc: Install dependencies
+    cmds:
+      - go mod tidy
+
+  build:
+    desc: Build the application
+    cmds:
+      - go build {{.GUI_FLAGS}} -o {{.BINARY}} {{.SRC_DIR}}
+
+  copy-templates:
+    desc: Copy template files
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}/templates
+      - cp -r {{.TEMPLATES_DIR}}/* {{.BUILD_DIR}}/templates/
+
+  run:
+    desc: Build and run the application
+    deps: [build, copy-templates]
+    cmds:
+      - '{{.BINARY}}'
+
+  clean:
+    desc: Clean build directory
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+
+  cross-build-windows:
+    desc: Cross-compile for Windows
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}/windows
+      - GOOS=windows GOARCH=amd64 go build {{.GUI_FLAGS}} -o {{.WINDOWS_BINARY}} {{.SRC_DIR}}
+      - cp -r {{.TEMPLATES_DIR}}/* {{.BUILD_DIR}}/windows/templates/
+
+  sign-windows:
+    desc: Sign Windows executable
+    deps: [cross-build-windows]
+    cmds:
+      - |
+        if [ ! -f "{{.CERT_FILE}}" ]; then
+          echo "Error: Certificate file {{.CERT_FILE}} not found"
+          exit 1
+        fi
+      - osslsigncode sign -pkcs12 {{.CERT_FILE}} -askpass -n {{.APP_NAME}} -i {{.CERT_URL}} -in {{.WINDOWS_BINARY}} -out {{.WINDOWS_SIGNED}} 
