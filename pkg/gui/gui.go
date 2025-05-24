@@ -2,7 +2,6 @@ package gui
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"outlook-signature/pkg/common"
 	"outlook-signature/pkg/signature"
@@ -36,33 +35,20 @@ func ShowGUI() {
 		return
 	}
 
-	// Create template selection components
-	templateEntry := widget.NewEntry()
-	templateEntry.SetText(templateBase)
-	templatePath := templateBase
-
-	// Create browse button
-	browseButton := widget.NewButton("Browse", func() {
-		dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
-			if err != nil {
-				dialog.ShowError(err, window)
-				return
-			}
-			if uri == nil {
-				return
-			}
-			templatePath = uri.Path()
-			templateEntry.SetText(templatePath)
-		}, window)
-	})
-
-	// Update templatePath when entry changes
-	templateEntry.OnChanged = func(path string) {
-		templatePath = path
+	// Get available templates
+	templates, err := common.GetAvailableTemplates()
+	if err != nil {
+		dialog.ShowError(err, window)
+		return
 	}
 
-	// Create template selection container
-	templateContainer := container.NewBorder(nil, nil, nil, browseButton, templateEntry)
+	// Create template selection dropdown
+	templateSelect := widget.NewSelect(templates, func(selected string) {
+		// This function is called when a template is selected
+	})
+	if len(templates) > 0 {
+		templateSelect.SetSelected(templates[0])
+	}
 
 	// Create form
 	form := &widget.Form{
@@ -70,7 +56,7 @@ func ShowGUI() {
 			{Text: "Name", Widget: nameEntry},
 			{Text: "Email", Widget: emailEntry},
 			{Text: "Phone", Widget: phoneEntry},
-			{Text: "Template", Widget: templateContainer},
+			{Text: "Template", Widget: templateSelect},
 		},
 		OnSubmit: func() {
 			// Validate inputs
@@ -105,8 +91,8 @@ func ShowGUI() {
 			}
 
 			// Install signature
-			installer := signature.NewInstaller(templatePath)
-			err = installer.Install(data, filepath.Base(templatePath))
+			installer := signature.NewInstaller(templateBase)
+			err = installer.Install(data, templateSelect.Selected)
 			if err != nil {
 				dialog.ShowError(err, window)
 				return
