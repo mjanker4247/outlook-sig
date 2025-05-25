@@ -1,7 +1,7 @@
 ---
-description: This rule enforces idiomatic Go coding practices based on official Go conventions, Effective Go, and commonly used style guides. It ensures your code is readable, maintainable, and tool-compatible.
+description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 ## Rule: Go Code Must Follow Common Programming Guidelines
 
