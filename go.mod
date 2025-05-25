@@ -4,6 +4,7 @@ go 1.24.2
 
 require (
 	fyne.io/fyne/v2 v2.6.1
+	github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496
 	github.com/nyaruka/phonenumbers v1.6.0
 	github.com/urfave/cli/v2 v2.27.6
 )

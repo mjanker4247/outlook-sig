@@ -1,0 +1,72 @@
+---
+description: This rule enforces idiomatic Go coding practices based on official Go conventions, Effective Go, and commonly used style guides. It ensures your code is readable, maintainable, and tool-compatible.
+globs: 
+alwaysApply: false
+---
+## Rule: Go Code Must Follow Common Programming Guidelines
+
+### Description
+This rule enforces idiomatic Go coding practices based on official Go conventions, Effective Go, and commonly used style guides. It ensures your code is readable, maintainable, and tool-compatible.
+
+### Applies To
+- **Files:** `*.go`
+
+### Rationale
+Go favors simplicity, readability, and idiomatic patterns. Following these guidelines helps ensure code quality, eases onboarding, and maximizes compatibility with Go tools and linters.
+
+### Violations
+Raise a warning or suggestion if any of the following are observed:
+- Code is not formatted with `gofmt`.
+- Identifiers use underscores (`_`) or non-camelCase naming.
+- Exported declarations lack Godoc-style comments.
+- Error handling does not follow `if err != nil` idiom.
+- Overuse of `panic`, deep nesting, or non-idiomatic constructs.
+- Poor import organization (not grouped: stdlib, 3rd-party, local).
+- Test functions not named `TestXxx`.
+- Global state in tests.
+
+### Examples
+
+```go
+// ✅ Good: idiomatic naming, formatting, and error handling
+type Account struct {
+    ID   int
+    Name string
+}
+
+func NewAccount(id int, name string) *Account {
+    return &Account{ID: id, Name: name}
+}
+
+func (a *Account) Greet() string {
+    return fmt.Sprintf("Hello, %s!", a.Name)
+}
+```
+
+```go
+// ❌ Bad: uses underscores and unexported types, no error check
+type account_struct {
+    account_id int
+    account_name string
+}
+
+func create_account(account_id int, account_name string) account_struct {
+    return account_struct{account_id, account_name}
+}
+```
+
+### Auto-Fixes
+- Use `gofmt` or `goimports` for formatting and import grouping.
+- Rename identifiers to follow camelCase and PascalCase.
+- Add missing comments to exported symbols.
+- Replace `panic` with error returns unless truly unrecoverable.
+
+### Tools Recommended
+- `gofmt`, `goimports` – for formatting and imports.
+- `golangci-lint` – includes `govet`, `golint`, `staticcheck`, etc.
+- `go vet` – built-in static analyzer.
+- `staticcheck` – powerful linting tool.
+
+### Severity
+warning
+
