@@ -64,3 +64,8 @@ tasks:
     platforms: [windows]
     cmds:
       - signtool sign /f {{.CERT_FILE}} /p {{.CERT_PASSWORD}} /t http://timestamp.digicert.com {{.BINARY}} 
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test -v ./... 

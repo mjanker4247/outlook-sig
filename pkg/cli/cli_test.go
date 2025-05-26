@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"outlook-signature/pkg/common"
 	"testing"
 )
 
@@ -19,9 +20,9 @@ func TestValidateEmail(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		err := validateEmail(test.email)
+		err := common.ValidateEmail(test.email)
 		if (err == nil && test.expected != nil) || (err != nil && test.expected == nil) {
-			t.Errorf("validateEmail(%q) = %v, want %v", test.email, err, test.expected)
+			t.Errorf("ValidateEmail(%q) = %v, want %v", test.email, err, test.expected)
 		}
 	}
 }
@@ -39,9 +40,9 @@ func TestValidatePhoneNumber(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		err := validatePhoneNumber(test.phone)
+		err := common.ValidatePhoneNumber(test.phone)
 		if (err == nil && test.expected != nil) || (err != nil && test.expected == nil) {
-			t.Errorf("validatePhoneNumber(%q) = %v, want %v", test.phone, err, test.expected)
+			t.Errorf("ValidatePhoneNumber(%q) = %v, want %v", test.phone, err, test.expected)
 		}
 	}
 }
@@ -78,20 +79,20 @@ func TestFormatPhoneNumber(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		display, link, err := formatPhoneNumber(test.phone, test.countryCode)
+		display, link, err := common.FormatPhoneNumber(test.phone, test.countryCode)
 		if test.shouldError {
 			if err == nil {
-				t.Errorf("formatPhoneNumber(%q, %q) should have returned an error", test.phone, test.countryCode)
+				t.Errorf("FormatPhoneNumber(%q, %q) should have returned an error", test.phone, test.countryCode)
 			}
 		} else {
 			if err != nil {
-				t.Errorf("formatPhoneNumber(%q, %q) returned error: %v", test.phone, test.countryCode, err)
+				t.Errorf("FormatPhoneNumber(%q, %q) returned error: %v", test.phone, test.countryCode, err)
 			}
 			if display != test.display {
-				t.Errorf("formatPhoneNumber(%q, %q) display = %q, want %q", test.phone, test.countryCode, display, test.display)
+				t.Errorf("FormatPhoneNumber(%q, %q) display = %q, want %q", test.phone, test.countryCode, display, test.display)
 			}
 			if link != test.link {
-				t.Errorf("formatPhoneNumber(%q, %q) link = %q, want %q", test.phone, test.countryCode, link, test.link)
+				t.Errorf("FormatPhoneNumber(%q, %q) link = %q, want %q", test.phone, test.countryCode, link, test.link)
 			}
 		}
 	}
