@@ -4,6 +4,8 @@ vars:
   APP_NAME: SignatureInstaller
   BUILD_DIR: build
   TEMPLATES_DIR: templates
+  # Prerequisite: Install code signing certificate in Windows certificate store
+  CERT_NAME: "Marco Janker (Arbeit, Code signing)"
   SRC_DIR: ./cmd/signature-installer
   BINARY: '{{.BUILD_DIR}}/{{.APP_NAME}}{{if eq OS "windows"}}.exe{{end}}'
 
@@ -63,7 +65,7 @@ tasks:
     deps: [build-windows]
     platforms: [windows]
     cmds:
-      - signtool sign /f {{.CERT_FILE}} /p {{.CERT_PASSWORD}} /t http://timestamp.digicert.com {{.BINARY}} 
+      - signtool sign /fd SHA256 /n "{{.CERT_NAME}}" /t http://timestamp.digicert.com {{.BINARY}} 
 
   test:
     desc: Run all tests
