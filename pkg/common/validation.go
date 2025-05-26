@@ -95,7 +95,7 @@ func ValidateEmail(email string) error {
 	return nil
 }
 
-// ValidatePhoneNumber checks if the phone number is valid
+// ValidatePhoneNumber checks if the phone number is valid using the phonenumbers library
 func ValidatePhoneNumber(phone string) error {
 	if phone == "" {
 		return &ValidationError{
@@ -104,19 +104,45 @@ func ValidatePhoneNumber(phone string) error {
 		}
 	}
 
-	if len(phone) < 5 {
-		return &ValidationError{
-			Field:   "Phone",
-			Message: "must be at least 5 digits long",
-		}
-	}
-
-	// Try to parse the phone number
-	_, err := phonenumbers.Parse(phone, "DE")
+	// Try to parse the phone number (defaulting to DE as fallback)
+	num, err := phonenumbers.Parse(phone, "DE")
 	if err != nil {
 		return &ValidationError{
 			Field:   "Phone",
-			Message: "must be a valid phone number (e.g., +49 123 456789)",
+			Message: "invalid phone number format",
+		}
+	}
+
+	// Check if the number is valid
+	if !phonenumbers.IsPossibleNumber(num) {
+		return &ValidationError{
+			Field:   "Phone",
+			Message: "not a valid phone number",
+		}
+	}
+
+	// Get validation result for more specific error messages
+	reason := phonenumbers.IsPossibleNumberWithReason(num)
+	switch reason {
+	case phonenumbers.INVALID_COUNTRY_CODE:
+		return &ValidationError{
+			Field:   "Phone",
+			Message: "invalid country code",
+		}
+	case phonenumbers.TOO_SHORT:
+		return &ValidationError{
+			Field:   "Phone",
+			Message: "number is too short",
+		}
+	case phonenumbers.TOO_LONG:
+		return &ValidationError{
+			Field:   "Phone",
+			Message: "number is too long",
+		}
+	case phonenumbers.INVALID_LENGTH:
+		return &ValidationError{
+			Field:   "Phone",
+			Message: "number has invalid length for the country",
 		}
 	}
 

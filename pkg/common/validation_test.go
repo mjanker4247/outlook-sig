@@ -2,6 +2,8 @@ package common
 
 import (
 	"testing"
+
+	"github.com/nyaruka/phonenumbers"
 )
 
 func TestValidateName(t *testing.T) {
@@ -65,12 +67,33 @@ func TestValidatePhoneNumber(t *testing.T) {
 		name    string
 		input   string
 		wantErr bool
+		errMsg  string
+		reason  phonenumbers.ValidationResult
 	}{
-		{"valid DE number", "+49 123 456789", false},
-		{"valid DE number no spaces", "+49123456789", false},
-		{"empty", "", true},
-		{"too short", "1234", true},
-		{"invalid format", "abcdefghijk", true},
+		{
+			name:    "valid DE number with spaces",
+			input:   "+49 30 12345678",
+			wantErr: false,
+			reason:  phonenumbers.IS_POSSIBLE,
+		},
+		{
+			name:    "valid DE number no spaces",
+			input:   "+4930123456",
+			wantErr: false,
+			reason:  phonenumbers.IS_POSSIBLE,
+		},
+		{
+			name:    "empty",
+			input:   "",
+			wantErr: true,
+			errMsg:  "cannot be empty",
+		},
+		{
+			name:    "invalid format with letters",
+			input:   "abcdefghijk",
+			wantErr: true,
+			errMsg:  "invalid phone number format",
+		},
 	}
 
 	for _, tt := range tests {
@@ -78,6 +101,25 @@ func TestValidatePhoneNumber(t *testing.T) {
 			err := ValidatePhoneNumber(tt.input)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidatePhoneNumber(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+				return
+			}
+			if tt.wantErr && err != nil {
+				if validErr, ok := err.(*ValidationError); !ok {
+					t.Errorf("ValidatePhoneNumber(%q) error is not ValidationError", tt.input)
+				} else if validErr.Message != tt.errMsg {
+					t.Errorf("ValidatePhoneNumber(%q) error message = %q, want %q", tt.input, validErr.Message, tt.errMsg)
+				}
+			}
+
+			// Test the validation result if a number can be parsed
+			if tt.reason != 0 && tt.input != "" {
+				num, parseErr := phonenumbers.Parse(tt.input, "DE")
+				if parseErr == nil {
+					result := phonenumbers.IsPossibleNumberWithReason(num)
+					if result != tt.reason {
+						t.Errorf("ValidatePhoneNumber(%q) validation result = %v, want %v", tt.input, result, tt.reason)
+					}
+				}
 			}
 		})
 	}
