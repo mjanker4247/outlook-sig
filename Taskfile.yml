@@ -5,85 +5,46 @@ vars:
   BUILD_DIR: build
   TEMPLATES_DIR: templates
   SRC_DIR: ./cmd/signature-installer
-  GUI_FLAGS: -tags fyne_gui
   BINARY: '{{.BUILD_DIR}}/{{.APP_NAME}}{{if eq OS "windows"}}.exe{{end}}'
-  WINDOWS_BINARY: '{{.BUILD_DIR}}/windows/{{.APP_NAME}}.exe'
-  MAC_BINARY: '{{.BUILD_DIR}}/mac/{{.APP_NAME}}'
-  MAC_APP: '{{.BUILD_DIR}}/mac/{{.APP_NAME}}.app'
 
 tasks:
   default:
     desc: Build the application with all dependencies
     cmds:
-      - task: deps
-      - task: clean
       - task: build
       - task: copy-templates
 
-  deps:
-    desc: Install dependencies
-    cmds:
-      - go mod tidy
-      - go install fyne.io/fyne/v2/cmd/fyne@latest
-
+  # Build the application for current platform
   build:
     desc: Build the application for current platform
     cmds:
-      - go build {{.GUI_FLAGS}} -o {{.BINARY}} {{.SRC_DIR}}
+      - go build -o {{.BINARY}} {{.SRC_DIR}}
 
+  # Copy templates to the build directory
   copy-templates:
     desc: Copy template files
     cmds:
-      # Create templates directory
-      - cmd: mkdir -p {{.BUILD_DIR}}/templates
-        platforms: [linux, darwin]
-      - cmd: if not exist {{.BUILD_DIR}}\templates mkdir {{.BUILD_DIR}}\templates
-        platforms: [windows]
       # Copy templates
       - cmd: cp -r {{.TEMPLATES_DIR}}/* {{.BUILD_DIR}}/templates/
         platforms: [linux, darwin]
-      - cmd: xcopy /E /I /Y {{.TEMPLATES_DIR}} {{.BUILD_DIR}}\templates
+      - cmd: xcopy /E /I /Y {{.TEMPLATES_DIR}} {{.BUILD_DIR}}\\templates
         platforms: [windows]
 
-  run:
-    desc: Build and run the application
-    deps: [build, copy-templates]
-    cmds:
-      - '{{.BINARY}}'
-
-  clean:
-    desc: Clean build directory
-    cmds:
-      - cmd: rm -rf {{.BUILD_DIR}}
-        platforms: [linux, darwin]
-      - cmd: rmdir /s /q {{.BUILD_DIR}}
-        platforms: [windows]
-
-  build-mac:
-    desc: Build macOS application bundle
-    platforms: [darwin]
-    cmds:
-      - mkdir -p {{.BUILD_DIR}}/mac
-      - go build {{.GUI_FLAGS}} -o {{.MAC_BINARY}} {{.SRC_DIR}}
-      - fyne package -os darwin -icon Icon.png -name {{.APP_NAME}} -executable {{.MAC_BINARY}}
-      - cp -r {{.TEMPLATES_DIR}} {{.MAC_APP}}/Contents/Resources/templates
-
+  # This task is to build on macOS/Linux for the Windows platform      
   cross-build-windows:
     desc: Cross-compile for Windows (from macOS/Linux)
     platforms: [darwin, linux]
     cmds:
-      - mkdir -p {{.BUILD_DIR}}/windows
-      - GOOS=windows GOARCH=amd64 go build {{.GUI_FLAGS}} -o {{.WINDOWS_BINARY}} {{.SRC_DIR}}
-      - mkdir -p {{.BUILD_DIR}}/windows/templates
-      - cp -r {{.TEMPLATES_DIR}}/* {{.BUILD_DIR}}/windows/templates/
+      - GOOS=windows GOARCH=amd64 go build -o {{.BINARY}} {{.SRC_DIR}}
+      - task: copy-templates
 
+  # This task is to build on Windows for the Windows platform      
   build-windows:
     desc: Build Windows application (on Windows)
     platforms: [windows]
     cmds:
-      - mkdir {{.BUILD_DIR}}\windows
-      - go build {{.GUI_FLAGS}} -o {{.WINDOWS_BINARY}} {{.SRC_DIR}}
-      - xcopy /E /I /Y {{.TEMPLATES_DIR}} {{.BUILD_DIR}}\windows\templates
+      - task: build
+      - task: copy-templates
 
   sign-windows:
     desc: Sign Windows executable
@@ -95,11 +56,11 @@ tasks:
           echo "Error: Certificate file {{.CERT_FILE}} not found"
           exit 1
         fi
-      - osslsigncode sign -pkcs12 {{.CERT_FILE}} -askpass -n {{.APP_NAME}} -i {{.CERT_URL}} -in {{.WINDOWS_BINARY}} -out {{.WINDOWS_SIGNED}}
+      - osslsigncode sign -pkcs12 {{.CERT_FILE}} -askpass -n {{.APP_NAME}} -i {{.CERT_URL}} -in {{.BINARY}} -out {{.WINDOWS_SIGNED}}
 
   sign-windows-native:
     desc: Sign Windows executable (on Windows)
     deps: [build-windows]
     platforms: [windows]
     cmds:
-      - signtool sign /f {{.CERT_FILE}} /p {{.CERT_PASSWORD}} /t http://timestamp.digicert.com {{.WINDOWS_BINARY}} 
+      - signtool sign /f {{.CERT_FILE}} /p {{.CERT_PASSWORD}} /t http://timestamp.digicert.com {{.BINARY}} 
