@@ -113,17 +113,18 @@ func ValidatePhoneNumber(phone string) error {
 		}
 	}
 
-	// Check if the number is valid
-	if !phonenumbers.IsPossibleNumber(num) {
-		return &ValidationError{
-			Field:   "Phone",
-			Message: "not a valid phone number",
-		}
-	}
-
-	// Get validation result for more specific error messages
+	// First check if the number is possible and get specific validation errors
 	reason := phonenumbers.IsPossibleNumberWithReason(num)
 	switch reason {
+	case phonenumbers.IS_POSSIBLE:
+		// Only check IsValidNumber if the number is possible
+		if !phonenumbers.IsValidNumber(num) {
+			return &ValidationError{
+				Field:   "Phone",
+				Message: "not a valid phone number",
+			}
+		}
+		return nil
 	case phonenumbers.INVALID_COUNTRY_CODE:
 		return &ValidationError{
 			Field:   "Phone",
@@ -144,9 +145,12 @@ func ValidatePhoneNumber(phone string) error {
 			Field:   "Phone",
 			Message: "number has invalid length for the country",
 		}
+	default:
+		return &ValidationError{
+			Field:   "Phone",
+			Message: "not a valid phone number",
+		}
 	}
-
-	return nil
 }
 
 // FormatPhoneNumber formats a phone number for display and link

@@ -2,8 +2,6 @@ package common
 
 import (
 	"testing"
-
-	"github.com/nyaruka/phonenumbers"
 )
 
 func TestValidateName(t *testing.T) {
@@ -68,19 +66,16 @@ func TestValidatePhoneNumber(t *testing.T) {
 		input   string
 		wantErr bool
 		errMsg  string
-		reason  phonenumbers.ValidationResult
 	}{
 		{
 			name:    "valid DE number with spaces",
 			input:   "+49 30 12345678",
 			wantErr: false,
-			reason:  phonenumbers.IS_POSSIBLE,
 		},
 		{
-			name:    "valid DE number no spaces",
-			input:   "+4930123456",
+			name:    "valid DE mobile number",
+			input:   "+49 151 12345678",
 			wantErr: false,
-			reason:  phonenumbers.IS_POSSIBLE,
 		},
 		{
 			name:    "empty",
@@ -93,6 +88,12 @@ func TestValidatePhoneNumber(t *testing.T) {
 			input:   "abcdefghijk",
 			wantErr: true,
 			errMsg:  "invalid phone number format",
+		},
+		{
+			name:    "possible but invalid number",
+			input:   "+49 000 0000000",
+			wantErr: true,
+			errMsg:  "not a valid phone number",
 		},
 	}
 
@@ -108,17 +109,6 @@ func TestValidatePhoneNumber(t *testing.T) {
 					t.Errorf("ValidatePhoneNumber(%q) error is not ValidationError", tt.input)
 				} else if validErr.Message != tt.errMsg {
 					t.Errorf("ValidatePhoneNumber(%q) error message = %q, want %q", tt.input, validErr.Message, tt.errMsg)
-				}
-			}
-
-			// Test the validation result if a number can be parsed
-			if tt.reason != 0 && tt.input != "" {
-				num, parseErr := phonenumbers.Parse(tt.input, "DE")
-				if parseErr == nil {
-					result := phonenumbers.IsPossibleNumberWithReason(num)
-					if result != tt.reason {
-						t.Errorf("ValidatePhoneNumber(%q) validation result = %v, want %v", tt.input, result, tt.reason)
-					}
 				}
 			}
 		})
