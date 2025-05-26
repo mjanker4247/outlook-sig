@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"net/mail"
 	"strings"
 
 	"github.com/asaskevich/govalidator"
@@ -83,29 +84,11 @@ func ValidateEmail(email string) error {
 		}
 	}
 
-	// Check for @ symbol
-	atIndex := strings.Index(email, "@")
-	if atIndex == -1 || atIndex == 0 || atIndex == len(email)-1 {
+	_, err := mail.ParseAddress(email)
+	if err != nil {
 		return &ValidationError{
 			Field:   "Email",
-			Message: "must contain a valid domain (e.g., example.com)",
-		}
-	}
-
-	// Check for domain
-	domain := email[atIndex+1:]
-	if !strings.Contains(domain, ".") {
-		return &ValidationError{
-			Field:   "Email",
-			Message: "must contain a valid domain (e.g., example.com)",
-		}
-	}
-
-	// Check for valid characters
-	if strings.ContainsAny(email, " ") {
-		return &ValidationError{
-			Field:   "Email",
-			Message: "cannot contain spaces",
+			Message: "invalid email format",
 		}
 	}
 
