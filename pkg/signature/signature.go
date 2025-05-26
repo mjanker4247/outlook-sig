@@ -90,12 +90,17 @@ func (i *Installer) Install(data Data, sigName string) error {
 		return fmt.Errorf("Templates directory not found at %s", i.TemplateBase)
 	}
 
-	// Validate template name
+	// Validate template name and sanitize it
 	if sigName == "" {
 		return fmt.Errorf("Template name cannot be empty")
 	}
 	if strings.ContainsAny(sigName, `/\:*?"<>|`) {
 		return fmt.Errorf("Invalid template name: contains invalid characters")
+	}
+	// Additional security: Clean the path and check for traversal attempts
+	cleanSigName := filepath.Clean(sigName)
+	if cleanSigName != sigName || strings.Contains(cleanSigName, "..") {
+		return fmt.Errorf("Invalid template name: potential path traversal detected")
 	}
 
 	var sigDir string
@@ -119,8 +124,19 @@ func (i *Installer) Install(data Data, sigName string) error {
 	var errors []error
 
 	for _, ext := range extensions {
-		templatePath := filepath.Join(i.TemplateBase, sigName+ext)
-		destPath := filepath.Join(sigDir, sigName+ext)
+		templatePath := filepath.Join(i.TemplateBase, cleanSigName+ext)
+		// Additional security: Verify the resolved path is within TemplateBase
+		if !strings.HasPrefix(templatePath, i.TemplateBase) {
+			errors = append(errors, fmt.Errorf("Invalid template path: outside of template directory"))
+			continue
+		}
+
+		destPath := filepath.Join(sigDir, cleanSigName+ext)
+		// Additional security: Verify the resolved path is within sigDir
+		if !strings.HasPrefix(destPath, sigDir) {
+			errors = append(errors, fmt.Errorf("Invalid destination path: outside of signature directory"))
+			continue
+		}
 
 		if _, err := os.Stat(templatePath); os.IsNotExist(err) {
 			errors = append(errors, fmt.Errorf("Template file not found: %s", templatePath))
@@ -128,15 +144,19 @@ func (i *Installer) Install(data Data, sigName string) error {
 		}
 
 		if ext == ".htm" {
-			// Use html/template
+			// Use html/template with size limit
 			tpl, err := template.New(filepath.Base(templatePath)).ParseFiles(templatePath)
 			if err != nil {
 				errors = append(errors, fmt.Errorf("Failed to parse %s: %v", templatePath, err))
 				continue
 			}
 
-			var buf bytes.Buffer
-			if err := tpl.Execute(&buf, data); err != nil {
+			// Use LimitedBuffer to prevent memory exhaustion
+			buf := &LimitedBuffer{
+				Buffer: bytes.Buffer{},
+				limit:  5 * 1024 * 1024, // 5MB limit
+			}
+			if err := tpl.Execute(buf, data); err != nil {
 				errors = append(errors, fmt.Errorf("Failed to execute template %s: %v", templatePath, err))
 				continue
 			}
@@ -145,8 +165,16 @@ func (i *Installer) Install(data Data, sigName string) error {
 				errors = append(errors, fmt.Errorf("Failed to write %s: %v", destPath, err))
 				continue
 			}
-			imageDirSrc := filepath.Join(i.TemplateBase, sigName+"_files")
-			imageDirDst := filepath.Join(sigDir, sigName+"_files")
+
+			imageDirSrc := filepath.Join(i.TemplateBase, cleanSigName+"_files")
+			imageDirDst := filepath.Join(sigDir, cleanSigName+"_files")
+
+			// Additional security: Verify image directory paths
+			if !strings.HasPrefix(imageDirSrc, i.TemplateBase) || !strings.HasPrefix(imageDirDst, sigDir) {
+				errors = append(errors, fmt.Errorf("Invalid image directory path"))
+				continue
+			}
+
 			if _, err := os.Stat(imageDirSrc); err == nil {
 				if err := copyDir(imageDirSrc, imageDirDst); err != nil {
 					errors = append(errors, fmt.Errorf("Failed to copy image folder: %v", err))
@@ -155,7 +183,7 @@ func (i *Installer) Install(data Data, sigName string) error {
 				}
 			}
 		} else if ext == ".txt" {
-			// Perform replacements
+			// Perform replacements with size limit
 			result, err := replacePlaceholders(templatePath, data)
 			if err != nil {
 				errors = append(errors, err)
@@ -182,7 +210,27 @@ func (i *Installer) Install(data Data, sigName string) error {
 	return nil
 }
 
+// LimitedBuffer is a buffer with a size limit to prevent memory exhaustion
+type LimitedBuffer struct {
+	bytes.Buffer
+	limit int
+}
+
+func (b *LimitedBuffer) Write(p []byte) (n int, err error) {
+	if b.Buffer.Len()+len(p) > b.limit {
+		return 0, fmt.Errorf("buffer size limit exceeded")
+	}
+	return b.Buffer.Write(p)
+}
+
 func copyDir(src string, dst string) error {
+	// Clean and verify paths
+	src = filepath.Clean(src)
+	dst = filepath.Clean(dst)
+	if strings.Contains(src, "..") || strings.Contains(dst, "..") {
+		return fmt.Errorf("path traversal detected")
+	}
+
 	return filepath.Walk(src, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -194,9 +242,18 @@ func copyDir(src string, dst string) error {
 		}
 
 		targetPath := filepath.Join(dst, relPath)
+		// Verify the target path is within dst directory
+		if !strings.HasPrefix(targetPath, dst) {
+			return fmt.Errorf("invalid target path: outside of destination directory")
+		}
 
 		if info.IsDir() {
 			return os.MkdirAll(targetPath, 0755)
+		}
+
+		// Size limit for files
+		if info.Size() > 50*1024*1024 { // 50MB limit
+			return fmt.Errorf("file too large: %s", path)
 		}
 
 		srcFile, err := os.Open(path)
@@ -205,13 +262,18 @@ func copyDir(src string, dst string) error {
 		}
 		defer srcFile.Close()
 
-		dstFile, err := os.Create(targetPath)
+		// Create file with restricted permissions
+		dstFile, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
 			return err
 		}
 		defer dstFile.Close()
 
-		_, err = io.Copy(dstFile, srcFile)
-		return err
+		// Use io.CopyN to limit the amount of data copied
+		_, err = io.CopyN(dstFile, srcFile, 50*1024*1024) // 50MB limit
+		if err != nil && err != io.EOF {
+			return err
+		}
+		return nil
 	})
 }
