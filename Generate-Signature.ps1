@@ -1,7 +1,7 @@
 # Check if ActiveDirectory module is available
 if (-not (Get-Module -ListAvailable -Name ActiveDirectory)) {
-    Write-Host "ERROR: Active Directory module for PowerShell is not installed."
-    Write-Host "Please install 'RSAT: Active Directory module for Windows PowerShell'."
+    Write-Host "ERROR: Active Directory module for PowerShell is not installed." -ForegroundColor Red
+    Write-Host "Please install 'RSAT: Active Directory module for Windows PowerShell'." -ForegroundColor Yellow
     exit 1
 }
 
@@ -13,29 +13,56 @@ $currentUser = [Environment]::UserName
 
 # Query Active Directory
 try {
-    $adUser = Get-ADUser -Identity $currentUser -Properties *
+    Write-Host "Querying Active Directory for user '$currentUser'..." -ForegroundColor Gray
+    $adUser = Get-ADUser -Identity $currentUser -Properties DisplayName, Mail, telephoneNumber
 } catch {
-    Write-Host "ERROR: Could not find user '$currentUser' in Active Directory."
+    Write-Host "ERROR: Could not find user '$currentUser' in Active Directory." -ForegroundColor Red
+    Write-Host "Details: $_" -ForegroundColor Yellow
     exit 2
 }
 
 # Extract fields
 $displayName = $adUser.DisplayName
 $email = $adUser.Mail
-$username = $adUser.SamAccountName
 $telephoneNumber = $adUser.telephoneNumber
 
 # Validate fields
-if ([string]::IsNullOrEmpty($displayName) -or [string]::IsNullOrEmpty($email) -or [string]::IsNullOrEmpty($username)) {
-    Write-Host "ERROR: Some required attributes are missing (DisplayName, Mail, or SamAccountName)."
+$missingFields = @()
+if ([string]::IsNullOrEmpty($displayName)) { $missingFields += "DisplayName" }
+if ([string]::IsNullOrEmpty($email)) { $missingFields += "Mail" }
+if ([string]::IsNullOrEmpty($telephoneNumber)) { 
+    Write-Host "WARNING: Phone number is missing. Signature will be generated without it." -ForegroundColor Yellow
+}
+
+if ($missingFields.Count -gt 0) {
+    Write-Host "ERROR: Required attributes are missing: $($missingFields -join ', ')" -ForegroundColor Red
     exit 3
 }
 
-# Output (for debug/log)
-Write-Host "DisplayName: $displayName"
-Write-Host "Email: $email"
-Write-Host "Email: $telephoneNumber"
-Write-Host "Username: $username"
+# Output user information
+Write-Host "`nUser Information:" -ForegroundColor Cyan
+Write-Host "DisplayName: $displayName" -ForegroundColor White
+Write-Host "Email: $email" -ForegroundColor White
+Write-Host "Phone: $telephoneNumber" -ForegroundColor White
 
-# Call Go tool
-.\SignatureInstaller.exe -name "$displayName" -email "$email" -phone "$telephoneNumber"
+# Check if SignatureInstaller exists
+if (-not (Test-Path ".\SignatureInstaller.exe")) {
+    Write-Host "ERROR: SignatureInstaller.exe not found in current directory." -ForegroundColor Red
+    exit 4
+}
+
+# Call SignatureInstaller
+Write-Host "`nGenerating signature..." -ForegroundColor Cyan
+try {
+    & .\SignatureInstaller.exe -name "$displayName" -email "$email" -phone "$telephoneNumber"
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Signature generated successfully!" -ForegroundColor Green
+    } else {
+        Write-Host "ERROR: SignatureInstaller failed with exit code $LASTEXITCODE" -ForegroundColor Red
+        exit 5
+    }
+} catch {
+    Write-Host "ERROR: Failed to run SignatureInstaller." -ForegroundColor Red
+    Write-Host "Details: $_" -ForegroundColor Yellow
+    exit 6
+}

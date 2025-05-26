@@ -12,6 +12,12 @@
 *.env
 .env.*
 *.local
+*.cert
+*.pfx
+*.p12
+*.key
+*.pem
+*.crt
 
 # macOS
 .DS_Store
@@ -64,7 +70,6 @@ ntuser.dat*
 *.out
 vendor/
 go.work
-go.sum
 build/
 
 # IDEs and Editors
@@ -96,3 +101,10 @@ build/
 ## Vim
 *.swp
 *.swo
+
+# Project specific
+*.sig
+dist/
+release/
+*.syso
+fyne-cross/

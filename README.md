@@ -14,14 +14,27 @@ A tool to install and manage email signatures in Microsoft Outlook for macOS and
 
 ## Prerequisites
 
-- Go 1.16 or later
+- Go 1.24.2
 - Microsoft Outlook installed
 - Git (for cloning the repository)
 - Task (for building)
 
 ## Installation
 
-1. Clone the repository:
+1. Install prerequisites using the provided scripts:
+
+On Windows (PowerShell):
+```powershell
+.\install-prerequisites.ps1
+```
+
+On macOS:
+```bash
+chmod +x install-prerequisites.sh
+./install-prerequisites.sh
+```
+
+2. Clone the repository:
 ```bash
 git clone https://git.ululuu.de/jankerm/outlook-signature.git
 cd outlook-signature
