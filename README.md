@@ -63,12 +63,6 @@ task build
 # Build for Windows (cross-compilation)
 task cross-build-windows
 
-# Clean build directory
-task clean
-
-# Run the application
-task run
-
 # Build and sign Windows executable
 task sign-windows
 ```
@@ -160,11 +154,8 @@ The project includes VS Code configuration for easy development:
 2. Use the Command Palette (Cmd/Ctrl + Shift + P)
 3. Type "Tasks: Run Task" to see available build tasks:
    - Build
-   - Clean
-   - Run
    - Build Windows
    - Sign Windows
-   - Build All
 
 ### Debugging
 
