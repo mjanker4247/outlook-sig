@@ -8,6 +8,7 @@ vars:
   CERT_NAME: "Marco Janker (Arbeit, Code signing)"
   SRC_DIR: ./cmd/signature-installer
   BINARY: '{{.BUILD_DIR}}/{{.APP_NAME}}{{if eq OS "windows"}}.exe{{end}}'
+  WINDOWS_SIGNED: '{{.BUILD_DIR}}/{{.APP_NAME}}-signed.exe'
 
 tasks:
   default:
