@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+
+	"github.com/spf13/afero"
 )
 
 // Data represents the signature data structure
@@ -25,12 +27,14 @@ type Data struct {
 type Installer struct {
 	TemplateBase string
 	sigDir       string // Optional override for signature directory
+	fs           afero.Fs
 }
 
 // NewInstaller creates a new signature installer
 func NewInstaller(templateBase string) *Installer {
 	return &Installer{
 		TemplateBase: templateBase,
+		fs:           afero.NewOsFs(),
 	}
 }
 
@@ -55,13 +59,13 @@ func GetOutlookSignatureDir() (string, error) {
 }
 
 // Replaces placeholders like {{ .Name }} or {{.Name}} etc.
-func replacePlaceholders(templateOrPath string, data Data) (string, error) {
+func (i *Installer) replacePlaceholders(templateOrPath string, data Data) (string, error) {
 	var content string
 
 	// Check if the input is a file
-	if _, err := os.Stat(templateOrPath); err == nil {
+	if _, err := i.fs.Stat(templateOrPath); err == nil {
 		// Read the template file
-		templateContent, err := os.ReadFile(templateOrPath)
+		templateContent, err := afero.ReadFile(i.fs, templateOrPath)
 		if err != nil {
 			return "", fmt.Errorf("Failed to read template file %s: %v", templateOrPath, err)
 		}
@@ -86,7 +90,7 @@ func replacePlaceholders(templateOrPath string, data Data) (string, error) {
 
 // Install installs a signature with the given data
 func (i *Installer) Install(data Data, sigName string) error {
-	if _, err := os.Stat(i.TemplateBase); os.IsNotExist(err) {
+	if _, err := i.fs.Stat(i.TemplateBase); os.IsNotExist(err) {
 		return fmt.Errorf("Templates directory not found at %s", i.TemplateBase)
 	}
 
@@ -115,7 +119,7 @@ func (i *Installer) Install(data Data, sigName string) error {
 	}
 
 	// Create the signature directory if it doesn't exist
-	if err := os.MkdirAll(sigDir, 0755); err != nil {
+	if err := i.fs.MkdirAll(sigDir, 0755); err != nil {
 		return fmt.Errorf("Failed to create signature directory: %v", err)
 	}
 
@@ -138,7 +142,7 @@ func (i *Installer) Install(data Data, sigName string) error {
 			continue
 		}
 
-		if _, err := os.Stat(templatePath); os.IsNotExist(err) {
+		if _, err := i.fs.Stat(templatePath); os.IsNotExist(err) {
 			errors = append(errors, fmt.Errorf("Template file not found: %s", templatePath))
 			continue
 		}
@@ -161,7 +165,7 @@ func (i *Installer) Install(data Data, sigName string) error {
 				continue
 			}
 
-			if err := os.WriteFile(destPath, buf.Bytes(), 0644); err != nil {
+			if err := afero.WriteFile(i.fs, destPath, buf.Bytes(), 0644); err != nil {
 				errors = append(errors, fmt.Errorf("Failed to write %s: %v", destPath, err))
 				continue
 			}
@@ -175,8 +179,8 @@ func (i *Installer) Install(data Data, sigName string) error {
 				continue
 			}
 
-			if _, err := os.Stat(imageDirSrc); err == nil {
-				if err := copyDir(imageDirSrc, imageDirDst); err != nil {
+			if _, err := i.fs.Stat(imageDirSrc); err == nil {
+				if err := i.copyDir(imageDirSrc, imageDirDst); err != nil {
 					errors = append(errors, fmt.Errorf("Failed to copy image folder: %v", err))
 				} else {
 					fmt.Printf("Copied image assets to %s\n", imageDirDst)
@@ -184,14 +188,14 @@ func (i *Installer) Install(data Data, sigName string) error {
 			}
 		} else if ext == ".txt" {
 			// Perform replacements with size limit
-			result, err := replacePlaceholders(templatePath, data)
+			result, err := i.replacePlaceholders(templatePath, data)
 			if err != nil {
 				errors = append(errors, err)
 				continue
 			}
 
 			// Save the new file
-			err = os.WriteFile(destPath, []byte(result), 0644)
+			err = afero.WriteFile(i.fs, destPath, []byte(result), 0644)
 			if err != nil {
 				errors = append(errors, fmt.Errorf("Failed to write file %s: %v", destPath, err))
 				continue
@@ -223,7 +227,7 @@ func (b *LimitedBuffer) Write(p []byte) (n int, err error) {
 	return b.Buffer.Write(p)
 }
 
-func copyDir(src string, dst string) error {
+func (i *Installer) copyDir(src string, dst string) error {
 	// Clean and verify paths
 	src = filepath.Clean(src)
 	dst = filepath.Clean(dst)
@@ -231,7 +235,7 @@ func copyDir(src string, dst string) error {
 		return fmt.Errorf("path traversal detected")
 	}
 
-	return filepath.Walk(src, func(path string, info fs.FileInfo, err error) error {
+	return afero.Walk(i.fs, src, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -248,7 +252,7 @@ func copyDir(src string, dst string) error {
 		}
 
 		if info.IsDir() {
-			return os.MkdirAll(targetPath, 0755)
+			return i.fs.MkdirAll(targetPath, 0755)
 		}
 
 		// Size limit for files
@@ -256,14 +260,14 @@ func copyDir(src string, dst string) error {
 			return fmt.Errorf("file too large: %s", path)
 		}
 
-		srcFile, err := os.Open(path)
+		srcFile, err := i.fs.Open(path)
 		if err != nil {
 			return err
 		}
 		defer srcFile.Close()
 
 		// Create file with restricted permissions
-		dstFile, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+		dstFile, err := i.fs.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
 			return err
 		}

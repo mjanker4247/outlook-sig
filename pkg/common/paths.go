@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/spf13/afero"
 )
+
+var fs = afero.NewOsFs()
 
 // GetTemplateBase returns the base directory for templates
 func GetTemplateBase() (string, error) {
@@ -23,7 +27,7 @@ func GetAvailableTemplates() ([]string, error) {
 	}
 
 	// Read the templates directory
-	entries, err := os.ReadDir(templateBase)
+	entries, err := afero.ReadDir(fs, templateBase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read templates directory: %v", err)
 	}
