@@ -10,7 +10,7 @@ A tool to install and manage email signatures in Microsoft Outlook for macOS and
 - Cross-platform support (macOS and Windows)
 - Command-line interface (CLI) and Graphical User Interface (GUI)
 - Easy template customization
-- Automatic image handling
+- Images embedded in HTML, no need for external links
 
 ## Prerequisites
 
