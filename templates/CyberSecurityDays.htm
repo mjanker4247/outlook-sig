@@ -110,21 +110,22 @@
           </td>
           <td width="211" valign="top" style="border: none; padding-bottom: 5.4pt; padding-left: 5.4pt">
             <p class="MsoNormalName">
-              <span lang="EN-US">Marco Janker</span>
+              <span lang="EN-US">{{ .Name }}</span>
             </p>
             <p class="MsoNormalLink">
               <span aria-hidden="true">&#9993;&nbsp;</span>
-              <a href="mailto:marco.janker@de.tuv.com" aria-label="Email marco.janker@de.tuv.com">
-                <span>marco.janker@de.tuv.com</span>
+              <a href="mailto:{{ .Email }}" aria-label="Email {{ .Email }}">
+                <span>{{ .Email }}</span>
               </a>
             </p>
             <p class="MsoNormalLink">
               <span aria-hidden="true">&#9743;&nbsp;</span>
-              <a href="tel:&#43;499116555737" aria-label="Phone &#43;49 911 6555737">
-                <span>&#43;49 911 6555737</span>
+              <a href="tel:{{.PhoneLink}}" aria-label="Phone {{.PhoneDisplay}}">
+                <span>{{.PhoneDisplay}}</span>
               </a>
             </p>
           </td>
+        </tr>
         </tr>
         <tr>
           <td width="43">
