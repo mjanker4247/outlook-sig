@@ -3,7 +3,7 @@ package signature
 import (
 	"bytes"
 	"fmt"
-	"html/template"
+	htmltemplate "html/template"
 	"io"
 	"net/http"
 	"os"
@@ -38,6 +38,48 @@ type Data struct {
 	Email        string
 	PhoneDisplay string
 	PhoneLink    string
+}
+
+// HTMLData represents the signature data structure with HTML-safe formatting
+type HTMLData struct {
+	Name         htmltemplate.HTML // Name with newlines converted to <br> tags
+	Email        string
+	PhoneDisplay string
+	PhoneLink    string
+}
+
+// cleanLineBreaks removes multiple consecutive line breaks and normalizes them to single line breaks
+func cleanLineBreaks(input string) string {
+	// Split by line breaks
+	lines := strings.Split(input, "\n")
+
+	// Filter out empty lines and trim whitespace
+	var cleanLines []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" {
+			cleanLines = append(cleanLines, trimmed)
+		}
+	}
+
+	// Join back with single line breaks
+	return strings.Join(cleanLines, "\n")
+}
+
+// ToHTMLData converts Data to HTMLData with proper HTML formatting
+func (d Data) ToHTMLData() HTMLData {
+	// Clean up multiple line breaks first
+	cleanName := cleanLineBreaks(d.Name)
+
+	// Convert newlines to <br> tags for HTML display
+	htmlName := strings.ReplaceAll(cleanName, "\n", "<br>")
+
+	return HTMLData{
+		Name:         htmltemplate.HTML(htmlName),
+		Email:        d.Email,
+		PhoneDisplay: d.PhoneDisplay,
+		PhoneLink:    d.PhoneLink,
+	}
 }
 
 // Installer handles signature installation
@@ -346,10 +388,20 @@ func (i *Installer) installFile(sigName, sigDir, ext string, data Data) error {
 
 // installHTMLFile installs an HTML signature file
 func (i *Installer) installHTMLFile(templatePath, destPath, sigName, sigDir string, data Data) error {
-	tpl, err := template.New(filepath.Base(templatePath)).ParseFiles(templatePath)
+	// Create template with function map for safeHTML
+	funcMap := htmltemplate.FuncMap{
+		"safeHTML": func(s htmltemplate.HTML) htmltemplate.HTML {
+			return s
+		},
+	}
+
+	tpl, err := htmltemplate.New(filepath.Base(templatePath)).Funcs(funcMap).ParseFiles(templatePath)
 	if err != nil {
 		return fmt.Errorf("failed to parse %s: %v", templatePath, err)
 	}
+
+	// Convert data to HTML-safe format with <br> tags for newlines
+	htmlData := data.ToHTMLData()
 
 	// Use LimitedBuffer to prevent memory exhaustion
 	buf := &LimitedBuffer{
@@ -357,7 +409,7 @@ func (i *Installer) installHTMLFile(templatePath, destPath, sigName, sigDir stri
 		limit:  common.BufferSizeLimit,
 	}
 
-	if err := tpl.Execute(buf, data); err != nil {
+	if err := tpl.Execute(buf, htmlData); err != nil {
 		return fmt.Errorf("failed to execute template %s: %v", templatePath, err)
 	}
 

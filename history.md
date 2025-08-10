@@ -1,5 +1,61 @@
 # Change History
 
+## 2024-12-19 - Implemented Line Break Cleanup for Consistent HTML Output
+
+**Summary**: Added comprehensive line break cleanup functionality to ensure consistent HTML output regardless of input formatting, working across both CLI and GUI interfaces.
+
+**Changes**:
+- **Line Break Cleanup Function**: Created `cleanLineBreaks` utility function that removes multiple consecutive line breaks and normalizes whitespace
+- **Signature Processing Integration**: Updated `ToHTMLData` method to clean line breaks before converting to HTML `<br>` tags
+- **CLI Input Processing**: Added line break cleanup to CLI input processing to ensure consistent formatting
+- **GUI Input Processing**: Added line break cleanup to GUI input processing for consistent behavior
+- **Enhanced Test Coverage**: Added comprehensive tests for line break cleanup functionality and edge cases
+
+**Technical Details**:
+- **Before**: Multiple consecutive line breaks in input would result in excessive `<br>` tags and inconsistent HTML output
+- **After**: All input is automatically cleaned to use exactly one line break between meaningful content lines
+- **Cleanup Process**: 
+  - Splits input by line breaks
+  - Filters out empty lines and lines with only whitespace
+  - Trims whitespace from each line
+  - Joins clean lines with single line breaks
+- **Result**: Input like "John Doe\n\n\nSoftware Engineer\n\n\n\nSenior Developer" now produces clean output "John Doe<br>Software Engineer<br>Senior Developer"
+
+**Benefits**:
+- **Consistent Output**: Regardless of input formatting, HTML output always uses exactly the right number of `<br>` tags
+- **Clean HTML**: No empty lines or excessive spacing in final HTML output
+- **User-Friendly**: Users can enter text with multiple line breaks, tabs, or spaces, and it will be cleaned up automatically
+- **Cross-Platform**: Works consistently in both CLI and GUI modes
+- **Maintains Intent**: Preserves user's intended line structure while cleaning up formatting artifacts
+
+**Files affected**: `pkg/signature/signature.go`, `pkg/cli/cli.go`, `pkg/gui/gui.go`, `pkg/signature/signature_test.go`
+
+## 2024-12-19 - Fixed Multiline Name HTML Conversion
+
+**Summary**: Fixed issue where multiline names given at command line were not correctly converted to HTML line breaks (`<br>`) in HTML signature templates.
+
+**Changes**:
+- **HTMLData Structure**: Added new `HTMLData` struct specifically for HTML template processing
+- **toHTMLData Method**: Created method to convert `Data` to `HTMLData` with proper HTML formatting
+- **HTML Template Processing**: Modified `installHTMLFile` function to use `HTMLData` instead of `Data`
+- **Newline Conversion**: Implemented automatic conversion of `\n` characters to `<br>` HTML tags for multiline names
+- **Template Updates**: Updated HTML templates to use `{{ .Name | safeHTML }}` to prevent HTML escaping
+- **Test Coverage**: Added comprehensive tests to verify multiline name conversion works correctly
+
+**Technical Details**:
+- **Before**: HTML templates used Go's `html/template` package which escaped HTML content, causing `<br>` tags to appear as literal text
+- **After**: Created `HTMLData` struct with `toHTMLData()` method that converts newlines to `<br>` tags, and updated templates to use `safeHTML` function
+- **Result**: Multiline names like "John Doe\nSoftware Engineer\nSenior Developer" now correctly display with proper line breaks in HTML signatures
+- **Files Modified**: `pkg/signature/signature.go`, `templates/Standard.htm`, `templates/CyberSecurityDays.htm`, `pkg/signature/signature_test.go`
+
+**Benefits**:
+- Proper HTML formatting for multiline names in email signatures
+- Consistent behavior between command line input and HTML output
+- Maintains backward compatibility with single-line names
+- Improved user experience for complex name/title combinations
+
+**Files affected**: `pkg/signature/signature.go`, `pkg/signature/signature_test.go`
+
 ## 2024-12-19 - Fixed PowerShell Script CLI Consistency
 
 **Summary**: Updated `Generate-Signature.ps1` to be consistent with the Go program's CLI interface and validation requirements.

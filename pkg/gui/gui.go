@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fmt"
+	"strings"
 
 	"outlook-signature/pkg/common"
 	"outlook-signature/pkg/signature"
@@ -91,7 +92,7 @@ func ShowGUI() {
 
 			// Create signature data
 			data := signature.Data{
-				Name:         nameEntry.Text,
+				Name:         cleanLineBreaks(nameEntry.Text),
 				Email:        emailEntry.Text,
 				PhoneDisplay: phoneDisplay,
 				PhoneLink:    phoneLink,
@@ -99,8 +100,12 @@ func ShowGUI() {
 
 			// Install signature
 			installer := signature.NewInstaller(templateBase)
-			err = installer.Install(data)
-			if err != nil {
+			if err := installer.LoadConfig(); err != nil {
+				dialog.ShowError(fmt.Errorf("failed to load configuration: %v", err), window)
+				return
+			}
+
+			if err := installer.Install(data); err != nil {
 				dialog.ShowError(fmt.Errorf("failed to install signature: %v", err), window)
 				return
 			}
@@ -118,4 +123,22 @@ func ShowGUI() {
 	window.SetContent(content)
 	window.Resize(fyne.NewSize(500, 250))
 	window.ShowAndRun()
+}
+
+// cleanLineBreaks removes multiple consecutive line breaks and normalizes them to single line breaks
+func cleanLineBreaks(input string) string {
+	// Split by line breaks
+	lines := strings.Split(input, "\n")
+
+	// Filter out empty lines and trim whitespace
+	var cleanLines []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" {
+			cleanLines = append(cleanLines, trimmed)
+		}
+	}
+
+	// Join back with single line breaks
+	return strings.Join(cleanLines, "\n")
 }
