@@ -12,3 +12,16 @@
 - Fixed template copying in build process
 
 **Files affected**: `pkg/signature/signature.go`, `pkg/cli/cli.go`, `Taskfile.yml`, `README.md`, `config.yaml`, `config.json` (removed)
+
+## 2024-12-19 - Added Web Template Support
+
+**Summary**: Added functionality to download templates from web servers, with configurable template sources and CLI override options.
+
+**Changes**:
+- Added web template configuration support in config.yaml
+- Implemented HTTP template downloading functionality
+- Added `--template-source` CLI flag to override configuration
+- Enhanced configuration structure with template source options
+- Updated documentation for web template usage
+
+**Files affected**: `pkg/signature/signature.go`, `pkg/cli/cli.go`, `config.yaml`, `README.md`

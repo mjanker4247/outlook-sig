@@ -74,13 +74,39 @@ The built binaries will be available in the `build/` directory:
 
 ## Configuration
 
-The application uses a configuration file (`config.yaml`) located in the build root directory to specify which template to use. The configuration file should contain:
+The application uses a configuration file (`config.yaml`) located in the build root directory to specify which template to use and where to source templates from. The configuration file should contain:
 
 ```yaml
 template_name: "Standard"
+template_source: "local"  # "local" or "web"
+web_templates:
+  base_url: "https://team.emea.tuv.group/sites/002458/TRLP%20KM%20Dokumente/Outlook%20Signatur/"
+  template_files:
+    - "Standard.htm"
+    - "Standard.txt"
 ```
 
 The `template_name` field should match the base filename of your template (without the `.htm` or `.txt` extension).
+
+### Template Sources
+
+The application supports two template sources:
+
+#### Local Templates (Default)
+Set `template_source: "local"` to use templates stored locally in the `templates/` directory.
+
+#### Web Templates
+Set `template_source: "web"` to download templates from a web server. This requires additional configuration:
+
+- `base_url`: The base URL where templates are hosted
+- `template_files`: List of template files to download
+
+When using web templates, the application will:
+1. Download the specified template files from the web server
+2. Store them locally in the `templates/` directory
+3. Use the downloaded templates for signature generation
+
+**Note**: Web templates are downloaded each time the application runs, ensuring you always have the latest versions.
 
 ## Usage
 
@@ -116,11 +142,17 @@ SignatureInstaller[.exe] [options]
 - `--name`, `-n`: Your full name
 - `--email`, `-e`: Your email address
 - `--phone`, `-p`: Your phone number
+- `--template-source`, `-s`: Template source: 'local' or 'web' (overrides config.yaml)
 - `--gui`, `-g`: Launch in GUI mode
 
 Example:
 ```bash
 SignatureInstaller --name "John Doe" --email "john.doe@example.com" --phone "+49123456789"
+```
+
+Using web templates:
+```bash
+SignatureInstaller --name "John Doe" --email "john.doe@example.com" --phone "+49123456789" --template-source web
 ```
 
 ## Templates

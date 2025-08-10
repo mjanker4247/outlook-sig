@@ -5,19 +5,29 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v3"
 )
 
+// WebTemplateConfig represents web template configuration
+type WebTemplateConfig struct {
+	BaseURL       string   `yaml:"base_url"`
+	TemplateFiles []string `yaml:"template_files"`
+}
+
 // Config represents the application configuration
 type Config struct {
-	TemplateName string `yaml:"template_name"`
+	TemplateName   string             `yaml:"template_name"`
+	TemplateSource string             `yaml:"template_source"`
+	WebTemplates   *WebTemplateConfig `yaml:"web_templates,omitempty"`
 }
 
 // Data represents the signature data structure
@@ -65,6 +75,64 @@ func (i *Installer) LoadConfig() error {
 	}
 
 	i.Config = &config
+	return nil
+}
+
+// DownloadWebTemplates downloads templates from the configured web server
+func (i *Installer) DownloadWebTemplates() error {
+	if i.Config == nil || i.Config.WebTemplates == nil {
+		return fmt.Errorf("web templates configuration not found")
+	}
+
+	// Create templates directory if it doesn't exist
+	templatesDir := filepath.Join(i.TemplateBase, "templates")
+	if err := i.fs.MkdirAll(templatesDir, 0755); err != nil {
+		return fmt.Errorf("failed to create templates directory: %v", err)
+	}
+
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	// Download each template file
+	for _, filename := range i.Config.WebTemplates.TemplateFiles {
+		url := i.Config.WebTemplates.BaseURL + filename
+		filepath := filepath.Join(templatesDir, filename)
+
+		if err := i.downloadFile(client, url, filepath); err != nil {
+			return fmt.Errorf("failed to download %s: %v", filename, err)
+		}
+	}
+
+	return nil
+}
+
+// downloadFile downloads a single file from a URL
+func (i *Installer) downloadFile(client *http.Client, url, filepath string) error {
+	resp, err := client.Get(url)
+	if err != nil {
+		return fmt.Errorf("failed to get %s: %v", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to get %s: status %d", url, resp.StatusCode)
+	}
+
+	// Create the file
+	file, err := i.fs.Create(filepath)
+	if err != nil {
+		return fmt.Errorf("failed to create file %s: %v", filepath, err)
+	}
+	defer file.Close()
+
+	// Copy the response body to the file
+	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to write to file %s: %v", filepath, err)
+	}
+
 	return nil
 }
 
@@ -128,6 +196,13 @@ func (i *Installer) Install(data Data) error {
 	if i.Config == nil {
 		if err := i.LoadConfig(); err != nil {
 			return fmt.Errorf("Failed to load configuration: %v", err)
+		}
+	}
+
+	// Check template source and download if needed
+	if i.Config.TemplateSource == "web" {
+		if err := i.DownloadWebTemplates(); err != nil {
+			return fmt.Errorf("Failed to download web templates: %v", err)
 		}
 	}
 

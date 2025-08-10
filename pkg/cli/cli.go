@@ -50,6 +50,11 @@ The template to use is configured in the config.yaml file.`,
 				Aliases: []string{"p"},
 				Usage:   "Your phone number",
 			},
+			&cli.StringFlag{
+				Name:    "template-source",
+				Aliases: []string{"s"},
+				Usage:   "Template source: 'local' or 'web' (overrides config.yaml)",
+			},
 		},
 		Action: func(c *cli.Context) error {
 			// Check if GUI mode is requested or no arguments are provided
@@ -93,6 +98,17 @@ The template to use is configured in the config.yaml file.`,
 			}
 
 			installer := signature.NewInstaller(templateBase)
+
+			// Override template source if specified via CLI flag
+			if templateSource := c.String("template-source"); templateSource != "" {
+				if installer.Config == nil {
+					if err := installer.LoadConfig(); err != nil {
+						return fmt.Errorf("Failed to load configuration: %v", err)
+					}
+				}
+				installer.Config.TemplateSource = templateSource
+			}
+
 			return installer.Install(data)
 		},
 	}
