@@ -1,5 +1,24 @@
 # Change History
 
+## 2024-12-19 - Fixed PowerShell Script CLI Consistency
+
+**Summary**: Updated `Generate-Signature.ps1` to be consistent with the Go program's CLI interface and validation requirements.
+
+**Changes**:
+- **Phone Number Requirement**: Changed phone number from optional to required, matching the Go program's validation
+- **CLI Arguments**: Simplified to always call `SignatureInstaller.exe` with all three required parameters (`-name`, `-email`, `-phone`)
+- **Error Handling**: Improved error messages to provide specific guidance on validation requirements
+- **Validation Logic**: Removed conditional phone number handling since it's now always required
+- **User Feedback**: Enhanced error messages to explain the expected format for each field
+
+**Benefits**:
+- Consistent behavior between PowerShell script and Go program
+- Clearer error messages for troubleshooting
+- Simplified logic by removing conditional parameter handling
+- Better alignment with the program's validation requirements
+
+**Files affected**: `Generate-Signature.ps1`
+
 ## 2024-12-19 - Code Complexity Reduction and Error Handling Improvements
 
 **Summary**: Refactored codebase to reduce complexity, improve maintainability, and enhance error handling consistency.

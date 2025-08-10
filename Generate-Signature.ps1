@@ -26,16 +26,15 @@ $displayName = $adUser.DisplayName
 $email = $adUser.Mail
 $telephoneNumber = $adUser.telephoneNumber
 
-# Validate fields
+# Validate required fields
 $missingFields = @()
 if ([string]::IsNullOrEmpty($displayName)) { $missingFields += "DisplayName" }
 if ([string]::IsNullOrEmpty($email)) { $missingFields += "Mail" }
-if ([string]::IsNullOrEmpty($telephoneNumber)) { 
-    Write-Host "WARNING: Phone number is missing. Signature will be generated without it." -ForegroundColor Yellow
-}
+if ([string]::IsNullOrEmpty($telephoneNumber)) { $missingFields += "telephoneNumber" }
 
 if ($missingFields.Count -gt 0) {
     Write-Host "ERROR: Required attributes are missing: $($missingFields -join ', ')" -ForegroundColor Red
+    Write-Host "All fields (DisplayName, Mail, telephoneNumber) are required for signature generation." -ForegroundColor Yellow
     exit 3
 }
 
@@ -70,23 +69,21 @@ if (-not (Test-Path ".\SignatureInstaller.exe")) {
     exit 4
 }
 
-# Call SignatureInstaller
+# Call SignatureInstaller with all required parameters
 Write-Host "`nGenerating signature..." -ForegroundColor Cyan
 try {
-    if ([string]::IsNullOrEmpty($telephoneNumber)) {
-        # Call without phone number if it's missing
-        & .\SignatureInstaller.exe -name "$displayName" -email "$email"
-    } else {
-        # Call with all parameters
-        & .\SignatureInstaller.exe -name "$displayName" -email "$email" -phone "$telephoneNumber"
-    }
+    # Call with all required parameters (name, email, phone)
+    & .\SignatureInstaller.exe -name "$displayName" -email "$email" -phone "$telephoneNumber"
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "Signature generated successfully!" -ForegroundColor Green
     } else {
         Write-Host "ERROR: SignatureInstaller failed with exit code $LASTEXITCODE" -ForegroundColor Red
-        Write-Host "This might be due to stricter validation in the new version." -ForegroundColor Yellow
-        Write-Host "Check the name format and phone number format." -ForegroundColor Yellow
+        Write-Host "This might be due to validation issues. Please check:" -ForegroundColor Yellow
+        Write-Host "- Name format (letters, spaces, dots, hyphens, apostrophes only)" -ForegroundColor Yellow
+        Write-Host "- Email format (must be valid email address)" -ForegroundColor Yellow
+        Write-Host "- Phone number format (must be valid international format)" -ForegroundColor Yellow
+        Write-Host "For phone numbers, ensure they include country code (e.g., +49 for Germany)" -ForegroundColor Yellow
         exit 5
     }
 } catch {
