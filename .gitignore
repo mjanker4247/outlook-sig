@@ -108,3 +108,6 @@ dist/
 release/
 *.syso
 fyne-cross/
+
+# Test server (not included in builds)
+test-server/

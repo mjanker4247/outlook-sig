@@ -25,3 +25,15 @@
 - Updated documentation for web template usage
 
 **Files affected**: `pkg/signature/signature.go`, `pkg/cli/cli.go`, `config.yaml`, `README.md`
+
+## 2024-12-19 - Created Test Server for Web Templates
+
+**Summary**: Added a simple local HTTP server for testing web template download functionality.
+
+**Changes**:
+- Created standalone test server in `test-server/` directory
+- Added test configuration file for local testing
+- Created automated test script for web template functionality
+- Added test server to .gitignore (excluded from builds)
+
+**Files affected**: `test-server/main.go`, `test-server/config-test.yaml`, `test-server/README.md`, `test-server/test-web-templates.sh`, `.gitignore`
