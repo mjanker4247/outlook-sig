@@ -1,6 +1,7 @@
 ﻿Freundliche Grüße/Best regards,
 
 {{ .Name }}
+
 {{ .Email }}
 Phone {{ .PhoneDisplay }}
 

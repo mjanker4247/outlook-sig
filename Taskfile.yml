@@ -15,7 +15,6 @@ tasks:
     desc: Build the application with all dependencies
     cmds:
       - task: build
-      - task: copy-templates
       - task: copy-config
 
   # Build the application for current platform
@@ -23,16 +22,6 @@ tasks:
     desc: Build the application for current platform
     cmds:
       - go build -o {{.BINARY}} {{.SRC_DIR}}
-
-  # Copy templates to the build directory
-  copy-templates:
-    desc: Copy template files
-    cmds:
-      # Create templates directory and copy templates
-      - cmd: mkdir -p {{.BUILD_DIR}}/templates && cp -r {{.TEMPLATES_DIR}}/* {{.BUILD_DIR}}/templates/
-        platforms: [linux, darwin]
-      - cmd: if not exist {{.BUILD_DIR}}\\templates mkdir {{.BUILD_DIR}}\\templates && xcopy /E /I /Y {{.TEMPLATES_DIR}} {{.BUILD_DIR}}\\templates
-        platforms: [windows]
 
   # Copy configuration file to build directory
   copy-config:
@@ -49,7 +38,6 @@ tasks:
     platforms: [darwin, linux]
     cmds:
       - GOOS=windows GOARCH=amd64 go build -o {{.BINARY}} {{.SRC_DIR}}
-      - task: copy-templates
       - task: copy-config
 
   # This task is to build on Windows for the Windows platform      
@@ -58,7 +46,6 @@ tasks:
     platforms: [windows]
     cmds:
       - task: build
-      - task: copy-templates
       - task: copy-config
 
   # Sign the Windows executable

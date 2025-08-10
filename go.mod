@@ -8,6 +8,7 @@ require (
 	github.com/nyaruka/phonenumbers v1.6.3
 	github.com/spf13/afero v1.14.0
 	github.com/urfave/cli/v2 v2.27.6
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -47,5 +48,4 @@ require (
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

@@ -46,6 +46,14 @@
         font-size: 9.0pt;
         font-family: "Aptos", "Segoe UI", Arial, sans-serif;
       }
+      p.MsoNormalEmail {
+        margin-top: 6pt;
+        margin-bottom: 0cm;
+        font-size: 10.0pt;
+        font-family: "Aptos", "Segoe UI", Arial, sans-serif;
+        color: black;
+        text-decoration: none;
+      }
       p.MsoNormalLink {
         margin: 0cm;
         font-size: 10.0pt;
@@ -112,7 +120,7 @@
             <p class="MsoNormalName">
               <span lang="EN-US">{{ .Name }}</span>
             </p>
-            <p class="MsoNormalLink">
+            <p class="MsoNormalEmail">
               <span aria-hidden="true">&#9993;&nbsp;</span>
               <a href="mailto:{{ .Email }}" aria-label="Email {{ .Email }}">
                 <span>{{ .Email }}</span>

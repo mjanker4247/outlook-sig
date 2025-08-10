@@ -21,7 +21,7 @@ func App() *cli.App {
 		Description: `This tool installs Microsoft Outlook signatures from templates.
 Templates may include these placeholders
 
-{{ .Name }}
+{{ .Name }} (supports multiline: name, profession, title)
 {{ .Email }}
 {{ .PhoneLink }}
 {{ .PhoneDisplay }}
@@ -38,7 +38,7 @@ The template to use is configured in the config.yaml file.`,
 			&cli.StringFlag{
 				Name:    "name",
 				Aliases: []string{"n"},
-				Usage:   "Your full name",
+				Usage:   "Your name (can include profession/title on separate lines)",
 			},
 			&cli.StringFlag{
 				Name:    "email",
@@ -67,6 +67,8 @@ The template to use is configured in the config.yaml file.`,
 			if name == "" {
 				return fmt.Errorf("name cannot be empty")
 			}
+			// Convert literal \n to actual newlines
+			name = strings.ReplaceAll(name, "\\n", "\n")
 
 			email := getOrPrompt(c.String("email"), "Enter your email: ")
 			if err := common.ValidateEmail(email); err != nil {
@@ -103,7 +105,7 @@ The template to use is configured in the config.yaml file.`,
 			if templateSource := c.String("template-source"); templateSource != "" {
 				if installer.Config == nil {
 					if err := installer.LoadConfig(); err != nil {
-						return fmt.Errorf("Failed to load configuration: %v", err)
+						return fmt.Errorf("failed to load configuration: %v", err)
 					}
 				}
 				installer.Config.TemplateSource = templateSource

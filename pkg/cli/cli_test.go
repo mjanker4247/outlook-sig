@@ -17,6 +17,14 @@ func TestGetOrPrompt(t *testing.T) {
 			prompt:   "Enter value:",
 			expected: "test-value",
 		},
+		{
+			name:     "returns existing value with whitespace",
+			value:    "  test-value  ",
+			prompt:   "Enter value:",
+			expected: "  test-value  ",
+		},
+		// Note: Testing empty/whitespace-only values would require stdin input
+		// which is not suitable for automated testing
 	}
 
 	for _, tt := range tests {

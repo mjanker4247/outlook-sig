@@ -37,3 +37,15 @@
 - Added test server to .gitignore (excluded from builds)
 
 **Files affected**: `test-server/main.go`, `test-server/config-test.yaml`, `test-server/README.md`, `test-server/test-web-templates.sh`, `.gitignore`
+
+## 2024-12-19 - Simplified Multiline Name Implementation
+
+**Summary**: Streamlined the multiline name functionality by removing the separate multiline flag and consolidating into a single name field.
+
+**Changes**:
+- Removed `--multiline-name` flag, consolidated into single `--name` flag
+- Enhanced validation to automatically filter out empty/non-visible lines
+- Updated template processing to clean up names by removing empty lines
+- Simplified CLI interface while maintaining full functionality
+
+**Files affected**: `pkg/cli/cli.go`, `pkg/common/validation.go`, `pkg/signature/signature.go`, `README.md`

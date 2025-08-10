@@ -9,6 +9,35 @@ import (
 	"github.com/nyaruka/phonenumbers"
 )
 
+const (
+	// MinNameLength is the minimum required length for a name
+	MinNameLength = 2
+	// BufferSizeLimit is the maximum buffer size to prevent memory exhaustion
+	BufferSizeLimit = 5 * 1024 * 1024 // 5MB
+	// FileSizeLimit is the maximum file size for copying
+	FileSizeLimit = 50 * 1024 * 1024 // 50MB
+)
+
+// Validation error messages
+const (
+	ErrNameEmpty            = "cannot be empty"
+	ErrNameTooShort         = "must contain at least one non-empty line"
+	ErrNameInvalidChars     = "can only contain letters, spaces, dots, hyphens, and apostrophes"
+	ErrNameConsecutivePunct = "cannot contain multiple consecutive punctuation marks"
+	ErrNameInvalidPunctPos  = "cannot start or end with punctuation marks (except for dots)"
+	ErrEmailEmpty           = "cannot be empty"
+	ErrEmailInvalid         = "invalid email format"
+	ErrPhoneEmpty           = "cannot be empty"
+	ErrPhoneInvalid         = "invalid phone number format"
+	ErrPhoneNotValid        = "not a valid phone number"
+	ErrPhoneCountryCode     = "invalid country code"
+	ErrPhoneTooShort        = "number is too short"
+	ErrPhoneTooLong         = "number is too long"
+	ErrPhoneInvalidLength   = "number has invalid length for the country"
+	ErrPhoneFormat          = "could not be formatted"
+	ErrSignatureInvalid     = "contains invalid characters"
+)
+
 // ValidationError represents a validation error with a user-friendly message
 type ValidationError struct {
 	Field   string
@@ -28,51 +57,95 @@ func ValidateName(name string) error {
 	if name == "" {
 		return &ValidationError{
 			Field:   "Name",
-			Message: "cannot be empty",
+			Message: ErrNameEmpty,
 		}
 	}
 
-	// Check if name is too short (less than 2 characters)
-	if len(name) < 2 {
+	// Split into lines and filter out empty/non-visible lines
+	var validLines []string
+	lines := strings.Split(name, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			validLines = append(validLines, line)
+		}
+	}
+
+	// Check if we have any valid lines
+	if len(validLines) == 0 {
 		return &ValidationError{
 			Field:   "Name",
-			Message: "must be at least 2 characters long",
+			Message: ErrNameTooShort,
 		}
 	}
 
-	// Use govalidator to check if the name is valid
-	if !govalidator.Matches(name, "^[a-zA-Z\\s\\.\\-']+$") {
+	// Check if name is too short (less than MinNameLength characters)
+	if len(validLines[0]) < MinNameLength {
 		return &ValidationError{
 			Field:   "Name",
-			Message: "can only contain letters, spaces, dots, hyphens, and apostrophes",
+			Message: fmt.Sprintf("first line must be at least %d characters long", MinNameLength),
 		}
 	}
 
-	// Normalize multiple spaces into a single space
-	name = strings.Join(strings.Fields(name), " ")
-
-	// Check for multiple consecutive punctuation or special characters
-	for i := range name[:len(name)-1] {
-		current := name[i]
-		next := name[i+1]
-		if (current == '.' || current == '-' || current == '\'') && (next == '.' || next == '-' || next == '\'') {
+	// Validate each valid line
+	for i, line := range validLines {
+		// Use govalidator to check if each line is valid
+		// Improved regex pattern for better readability
+		if !govalidator.Matches(line, `^[a-zA-Z\s\.\-']+$`) {
 			return &ValidationError{
 				Field:   "Name",
-				Message: "cannot contain multiple consecutive punctuation marks",
+				Message: fmt.Sprintf("line %d %s", i+1, ErrNameInvalidChars),
+			}
+		}
+
+		// Normalize multiple spaces into a single space
+		line = strings.Join(strings.Fields(line), " ")
+
+		// Check for multiple consecutive punctuation or special characters
+		if hasConsecutivePunctuation(line) {
+			return &ValidationError{
+				Field:   "Name",
+				Message: fmt.Sprintf("line %d %s", i+1, ErrNameConsecutivePunct),
+			}
+		}
+
+		// Check for punctuation at the start or end
+		if hasInvalidPunctuationPosition(line) {
+			return &ValidationError{
+				Field:   "Name",
+				Message: fmt.Sprintf("line %d %s", i+1, ErrNameInvalidPunctPos),
 			}
 		}
 	}
 
-	// Check for punctuation at the start or end
-	if strings.HasPrefix(name, ".") || strings.HasPrefix(name, "-") || strings.HasPrefix(name, "'") ||
-		strings.HasSuffix(name, "-") || strings.HasSuffix(name, "'") {
-		return &ValidationError{
-			Field:   "Name",
-			Message: "cannot start or end with punctuation marks (except for dots)",
+	return nil
+}
+
+// hasConsecutivePunctuation checks if a string contains consecutive punctuation marks
+func hasConsecutivePunctuation(line string) bool {
+	if len(line) < 2 {
+		return false
+	}
+	for j := range line[:len(line)-1] {
+		current := line[j]
+		next := line[j+1]
+		if isPunctuation(current) && isPunctuation(next) {
+			return true
 		}
 	}
+	return false
+}
 
-	return nil
+// hasInvalidPunctuationPosition checks if a string starts or ends with invalid punctuation
+func hasInvalidPunctuationPosition(line string) bool {
+	punctuationStart := strings.HasPrefix(line, ".") || strings.HasPrefix(line, "-") || strings.HasPrefix(line, "'")
+	punctuationEnd := strings.HasSuffix(line, "-") || strings.HasSuffix(line, "'")
+	return punctuationStart || punctuationEnd
+}
+
+// isPunctuation checks if a character is a punctuation mark
+func isPunctuation(char byte) bool {
+	return char == '.' || char == '-' || char == '\''
 }
 
 // ValidateEmail checks if the email address is valid
@@ -80,7 +153,7 @@ func ValidateEmail(email string) error {
 	if email == "" {
 		return &ValidationError{
 			Field:   "Email",
-			Message: "cannot be empty",
+			Message: ErrEmailEmpty,
 		}
 	}
 
@@ -88,7 +161,7 @@ func ValidateEmail(email string) error {
 	if err != nil {
 		return &ValidationError{
 			Field:   "Email",
-			Message: "invalid email format",
+			Message: ErrEmailInvalid,
 		}
 	}
 
@@ -97,10 +170,13 @@ func ValidateEmail(email string) error {
 
 // ValidatePhoneNumber checks if the phone number is valid using the phonenumbers library
 func ValidatePhoneNumber(phone string) error {
+	// Trim whitespace first
+	phone = strings.TrimSpace(phone)
+
 	if phone == "" {
 		return &ValidationError{
 			Field:   "Phone",
-			Message: "cannot be empty",
+			Message: ErrPhoneEmpty,
 		}
 	}
 
@@ -109,7 +185,7 @@ func ValidatePhoneNumber(phone string) error {
 	if err != nil {
 		return &ValidationError{
 			Field:   "Phone",
-			Message: "invalid phone number format",
+			Message: ErrPhoneInvalid,
 		}
 	}
 
@@ -121,34 +197,34 @@ func ValidatePhoneNumber(phone string) error {
 		if !phonenumbers.IsValidNumber(num) {
 			return &ValidationError{
 				Field:   "Phone",
-				Message: "not a valid phone number",
+				Message: ErrPhoneNotValid,
 			}
 		}
 		return nil
 	case phonenumbers.INVALID_COUNTRY_CODE:
 		return &ValidationError{
 			Field:   "Phone",
-			Message: "invalid country code",
+			Message: ErrPhoneCountryCode,
 		}
 	case phonenumbers.TOO_SHORT:
 		return &ValidationError{
 			Field:   "Phone",
-			Message: "number is too short",
+			Message: ErrPhoneTooShort,
 		}
 	case phonenumbers.TOO_LONG:
 		return &ValidationError{
 			Field:   "Phone",
-			Message: "number is too long",
+			Message: ErrPhoneTooLong,
 		}
 	case phonenumbers.INVALID_LENGTH:
 		return &ValidationError{
 			Field:   "Phone",
-			Message: "number has invalid length for the country",
+			Message: ErrPhoneInvalidLength,
 		}
 	default:
 		return &ValidationError{
 			Field:   "Phone",
-			Message: "not a valid phone number",
+			Message: ErrPhoneNotValid,
 		}
 	}
 }
@@ -159,7 +235,7 @@ func FormatPhoneNumber(phone string, countryCode string) (string, string, error)
 	if err != nil {
 		return phone, phone, &ValidationError{
 			Field:   "Phone",
-			Message: "could not be formatted",
+			Message: ErrPhoneFormat,
 		}
 	}
 
@@ -174,7 +250,7 @@ func ValidateSignatureName(name string) error {
 	if strings.ContainsAny(name, `/\:*?"<>|`) {
 		return &ValidationError{
 			Field:   "Template",
-			Message: "contains invalid characters",
+			Message: ErrSignatureInvalid,
 		}
 	}
 	return nil

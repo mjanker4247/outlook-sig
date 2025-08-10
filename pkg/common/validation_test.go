@@ -14,12 +14,18 @@ func TestValidateName(t *testing.T) {
 		{"valid with dot", "J. R. R. Tolkien", false},
 		{"valid with hyphen", "Jean-Paul", false},
 		{"valid with apostrophe", "O'Connor", false},
+		{"valid multiline", "John Doe\nSoftware Engineer\nSenior Developer", false},
 		{"empty", "", true},
 		{"too short", "J", true},
 		{"invalid chars", "John123", true},
 		{"consecutive punctuation", "John--Doe", true},
 		{"starts with punctuation", "-John", true},
 		{"ends with punctuation", "John-", true},
+		{"starts with dot", ".John", true},
+		{"ends with dot", "John.", false},                  // Dots are allowed at the end
+		{"multiple spaces", "John   Doe", false},           // Multiple spaces are normalized
+		{"empty lines", "John\n\nDoe", false},              // Empty lines are filtered
+		{"whitespace only lines", "John\n   \nDoe", false}, // Whitespace-only lines are filtered
 	}
 
 	for _, tt := range tests {
@@ -42,12 +48,15 @@ func TestValidateEmail(t *testing.T) {
 		{"valid with subdomain", "test@sub.example.com", false},
 		{"valid with dots", "first.last@example.com", false},
 		{"valid with plus", "test+label@example.com", false},
+		{"valid with underscore", "test_user@example.com", false},
+		{"valid with numbers", "test123@example.com", false},
 		{"empty", "", true},
 		{"no @", "testexample.com", true},
 		{"no domain", "test@", true},
 		{"no username", "@example.com", true},
 		{"invalid format", "test @example.com", true},
 		{"multiple @", "test@@example.com", true},
+		{"whitespace only", "   ", true},
 	}
 
 	for _, tt := range tests {
@@ -78,6 +87,11 @@ func TestValidatePhoneNumber(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name:    "valid DE number without country code",
+			input:   "030 12345678",
+			wantErr: false,
+		},
+		{
 			name:    "empty",
 			input:   "",
 			wantErr: true,
@@ -94,6 +108,12 @@ func TestValidatePhoneNumber(t *testing.T) {
 			input:   "+49 000 0000000",
 			wantErr: true,
 			errMsg:  "not a valid phone number",
+		},
+		{
+			name:    "whitespace only",
+			input:   "   ",
+			wantErr: true,
+			errMsg:  "cannot be empty",
 		},
 	}
 
@@ -133,11 +153,27 @@ func TestFormatPhoneNumber(t *testing.T) {
 			wantErr:  false,
 		},
 		{
+			name:     "valid DE number with spaces",
+			input:    "+49 30 12345678",
+			country:  "DE",
+			wantDisp: "+49 30 12345678",
+			wantLink: "+493012345678",
+			wantErr:  false,
+		},
+		{
 			name:     "invalid number",
 			input:    "invalid",
 			country:  "DE",
 			wantDisp: "invalid",
 			wantLink: "invalid",
+			wantErr:  true,
+		},
+		{
+			name:     "empty number",
+			input:    "",
+			country:  "DE",
+			wantDisp: "",
+			wantLink: "",
 			wantErr:  true,
 		},
 	}
@@ -168,6 +204,10 @@ func TestValidateSignatureName(t *testing.T) {
 	}{
 		{"valid name", "MySignature", false},
 		{"valid with spaces", "My Signature", false},
+		{"valid with dots", "My.Signature", false},
+		{"valid with hyphens", "My-Signature", false},
+		{"valid with underscores", "My_Signature", false},
+		{"valid with numbers", "MySignature123", false},
 		{"invalid with slash", "My/Signature", true},
 		{"invalid with backslash", "My\\Signature", true},
 		{"invalid with colon", "My:Signature", true},
@@ -176,6 +216,8 @@ func TestValidateSignatureName(t *testing.T) {
 		{"invalid with quotes", "My\"Signature", true},
 		{"invalid with angle brackets", "My<Signature>", true},
 		{"invalid with pipe", "My|Signature", true},
+		{"empty string", "", false},       // Empty names might be valid for some use cases
+		{"whitespace only", "   ", false}, // Whitespace-only names might be valid
 	}
 
 	for _, tt := range tests {
@@ -183,6 +225,85 @@ func TestValidateSignatureName(t *testing.T) {
 			err := ValidateSignatureName(tt.input)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateSignatureName(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// Test helper functions
+func TestHasConsecutivePunctuation(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{"no consecutive", "John Doe", false},
+		{"consecutive dots", "John..Doe", true},
+		{"consecutive hyphens", "John--Doe", true},
+		{"consecutive apostrophes", "John''Doe", true},
+		{"mixed consecutive", "John.-Doe", true},
+		{"single punctuation", "John-Doe", false},
+		{"empty string", "", false},
+		{"single character", "J", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := hasConsecutivePunctuation(tt.input)
+			if result != tt.expected {
+				t.Errorf("hasConsecutivePunctuation(%q) = %v, want %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestHasInvalidPunctuationPosition(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{"valid start and end", "John Doe", false},
+		{"starts with dot", ".John Doe", true},
+		{"starts with hyphen", "-John Doe", true},
+		{"starts with apostrophe", "'John Doe", true},
+		{"ends with hyphen", "John Doe-", true},
+		{"ends with apostrophe", "John Doe'", true},
+		{"ends with dot", "John Doe.", false}, // Dots are allowed at the end
+		{"empty string", "", false},
+		{"single character", "J", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := hasInvalidPunctuationPosition(tt.input)
+			if result != tt.expected {
+				t.Errorf("hasInvalidPunctuationPosition(%q) = %v, want %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsPunctuation(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    byte
+		expected bool
+	}{
+		{"dot", '.', true},
+		{"hyphen", '-', true},
+		{"apostrophe", '\'', true},
+		{"letter", 'a', false},
+		{"number", '1', false},
+		{"space", ' ', false},
+		{"other", '!', false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isPunctuation(tt.input)
+			if result != tt.expected {
+				t.Errorf("isPunctuation(%c) = %v, want %v", tt.input, result, tt.expected)
 			}
 		})
 	}

@@ -35,14 +35,26 @@ func ShowGUI() {
 	window := myApp.NewWindow("Outlook Signature Installer")
 
 	// Create form fields with validation
-	nameEntry := createValidatedEntry("Your full name", common.ValidateName)
+	// Use multiline text area for name to support profession/title on separate lines
+	nameEntry := widget.NewMultiLineEntry()
+	nameEntry.SetPlaceHolder("Your full name\nProfession/Title (optional)")
+	nameEntry.Validator = common.ValidateName
+	nameEntry.OnChanged = func(s string) {
+		if err := nameEntry.Validate(); err != nil {
+			nameEntry.SetValidationError(err)
+		} else {
+			nameEntry.SetValidationError(nil)
+		}
+		nameEntry.Refresh()
+	}
+
 	emailEntry := createValidatedEntry("Your email address", common.ValidateEmail)
 	phoneEntry := createValidatedEntry("Your phone number", common.ValidatePhoneNumber)
 
 	// Get template base directory
 	templateBase, err := common.GetTemplateBase()
 	if err != nil {
-		dialog.ShowError(fmt.Errorf("Failed to find templates: %v", err), window)
+		dialog.ShowError(fmt.Errorf("failed to find templates: %v", err), window)
 		return
 	}
 
@@ -89,7 +101,7 @@ func ShowGUI() {
 			installer := signature.NewInstaller(templateBase)
 			err = installer.Install(data)
 			if err != nil {
-				dialog.ShowError(fmt.Errorf("Failed to install signature: %v", err), window)
+				dialog.ShowError(fmt.Errorf("failed to install signature: %v", err), window)
 				return
 			}
 

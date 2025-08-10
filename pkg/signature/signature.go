@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"outlook-signature/pkg/common"
+
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v3"
 )
@@ -32,7 +34,7 @@ type Config struct {
 
 // Data represents the signature data structure
 type Data struct {
-	Name         string
+	Name         string // Can contain multiple lines (e.g., name, profession, title)
 	Email        string
 	PhoneDisplay string
 	PhoneLink    string
@@ -165,15 +167,28 @@ func (i *Installer) replacePlaceholders(templateOrPath string, data Data) (strin
 		// Read the template file
 		templateContent, err := afero.ReadFile(i.fs, templateOrPath)
 		if err != nil {
-			return "", fmt.Errorf("Failed to read template file %s: %v", templateOrPath, err)
+			return "", fmt.Errorf("failed to read template file %s: %v", templateOrPath, err)
 		}
 		content = string(templateContent)
 	} else {
 		content = templateOrPath
 	}
 
+	// Clean up name by removing empty lines
+	var cleanName string
+	if data.Name != "" {
+		var validLines []string
+		lines := strings.Split(data.Name, "\n")
+		for _, line := range lines {
+			if strings.TrimSpace(line) != "" {
+				validLines = append(validLines, strings.TrimSpace(line))
+			}
+		}
+		cleanName = strings.Join(validLines, "\n")
+	}
+
 	values := map[string]string{
-		"Name":         data.Name,
+		"Name":         cleanName,
 		"Email":        data.Email,
 		"PhoneDisplay": data.PhoneDisplay,
 		"PhoneLink":    data.PhoneLink,
@@ -195,14 +210,14 @@ func (i *Installer) Install(data Data) error {
 	// Load configuration if not already loaded
 	if i.Config == nil {
 		if err := i.LoadConfig(); err != nil {
-			return fmt.Errorf("Failed to load configuration: %v", err)
+			return fmt.Errorf("failed to load configuration: %v", err)
 		}
 	}
 
 	// Check template source and download if needed
 	if i.Config.TemplateSource == "web" {
 		if err := i.DownloadWebTemplates(); err != nil {
-			return fmt.Errorf("Failed to download web templates: %v", err)
+			return fmt.Errorf("failed to download web templates: %v", err)
 		}
 	}
 
@@ -229,13 +244,13 @@ func (i *Installer) Install(data Data) error {
 	} else {
 		sigDir, err = GetOutlookSignatureDir()
 		if err != nil {
-			return fmt.Errorf("Failed to get signature directory: %v", err)
+			return fmt.Errorf("failed to get signature directory: %v", err)
 		}
 	}
 
 	// Create the signature directory if it doesn't exist
 	if err := i.fs.MkdirAll(sigDir, 0755); err != nil {
-		return fmt.Errorf("Failed to create signature directory: %v", err)
+		return fmt.Errorf("failed to create signature directory: %v", err)
 	}
 
 	fmt.Println("Installing signature to:", sigDir)
@@ -266,22 +281,22 @@ func (i *Installer) Install(data Data) error {
 			// Use html/template with size limit
 			tpl, err := template.New(filepath.Base(templatePath)).ParseFiles(templatePath)
 			if err != nil {
-				errors = append(errors, fmt.Errorf("Failed to parse %s: %v", templatePath, err))
+				errors = append(errors, fmt.Errorf("failed to parse %s: %v", templatePath, err))
 				continue
 			}
 
 			// Use LimitedBuffer to prevent memory exhaustion
 			buf := &LimitedBuffer{
 				Buffer: bytes.Buffer{},
-				limit:  5 * 1024 * 1024, // 5MB limit
+				limit:  common.BufferSizeLimit,
 			}
 			if err := tpl.Execute(buf, data); err != nil {
-				errors = append(errors, fmt.Errorf("Failed to execute template %s: %v", templatePath, err))
+				errors = append(errors, fmt.Errorf("failed to execute template %s: %v", templatePath, err))
 				continue
 			}
 
 			if err := afero.WriteFile(i.fs, destPath, buf.Bytes(), 0644); err != nil {
-				errors = append(errors, fmt.Errorf("Failed to write %s: %v", destPath, err))
+				errors = append(errors, fmt.Errorf("failed to write %s: %v", destPath, err))
 				continue
 			}
 
@@ -296,7 +311,7 @@ func (i *Installer) Install(data Data) error {
 
 			if _, err := i.fs.Stat(imageDirSrc); err == nil {
 				if err := i.copyDir(imageDirSrc, imageDirDst); err != nil {
-					errors = append(errors, fmt.Errorf("Failed to copy image folder: %v", err))
+					errors = append(errors, fmt.Errorf("failed to copy image folder: %v", err))
 				} else {
 					fmt.Printf("Copied image assets to %s\n", imageDirDst)
 				}
@@ -312,7 +327,7 @@ func (i *Installer) Install(data Data) error {
 			// Save the new file
 			err = afero.WriteFile(i.fs, destPath, []byte(result), 0644)
 			if err != nil {
-				errors = append(errors, fmt.Errorf("Failed to write file %s: %v", destPath, err))
+				errors = append(errors, fmt.Errorf("failed to write file %s: %v", destPath, err))
 				continue
 			}
 		} else {
@@ -371,7 +386,7 @@ func (i *Installer) copyDir(src string, dst string) error {
 		}
 
 		// Size limit for files
-		if info.Size() > 50*1024*1024 { // 50MB limit
+		if info.Size() > common.FileSizeLimit {
 			return fmt.Errorf("file too large: %s", path)
 		}
 
@@ -389,7 +404,7 @@ func (i *Installer) copyDir(src string, dst string) error {
 		defer dstFile.Close()
 
 		// Use io.CopyN to limit the amount of data copied
-		_, err = io.CopyN(dstFile, srcFile, 50*1024*1024) // 50MB limit
+		_, err = io.CopyN(dstFile, srcFile, common.FileSizeLimit)
 		if err != nil && err != io.EOF {
 			return err
 		}

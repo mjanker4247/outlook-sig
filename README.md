@@ -139,7 +139,7 @@ SignatureInstaller[.exe] [options]
 
 #### Command Line Options
 
-- `--name`, `-n`: Your full name
+- `--name`, `-n`: Your name (can include profession/title on separate lines)
 - `--email`, `-e`: Your email address
 - `--phone`, `-p`: Your phone number
 - `--template-source`, `-s`: Template source: 'local' or 'web' (overrides config.yaml)
@@ -148,6 +148,11 @@ SignatureInstaller[.exe] [options]
 Example:
 ```bash
 SignatureInstaller --name "John Doe" --email "john.doe@example.com" --phone "+49123456789"
+```
+
+Using multiline name (with profession/title):
+```bash
+SignatureInstaller --name "John Doe\nSoftware Engineer" --email "john.doe@example.com" --phone "+49123456789"
 ```
 
 Using web templates:
@@ -162,7 +167,7 @@ The program uses HTML and text templates located in the `templates/` directory. 
 ### Template Placeholders
 
 Templates may include these placeholders:
-- `{{ .Name }}`: Your full name
+- `{{ .Name }}`: Your full name (supports multiline: name, profession, title)
 - `{{ .Email }}`: Your email address
 - `{{ .PhoneLink }}`: Phone number in E.164 format (for links)
 - `{{ .PhoneDisplay }}`: Formatted phone number (for display)
