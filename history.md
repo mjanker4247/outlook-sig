@@ -1,5 +1,39 @@
 # Change History
 
+## 2024-12-19 - Code Complexity Reduction and Error Handling Improvements
+
+**Summary**: Refactored codebase to reduce complexity, improve maintainability, and enhance error handling consistency.
+
+**Changes**:
+- **Signature Package Refactoring**: 
+  - Broke down the monolithic `Install` method into smaller, focused helper methods
+  - Extracted `validateTemplateBase`, `ensureConfigLoaded`, `handleWebTemplates`, `validateAndSanitizeTemplateName`, `getSignatureDirectory`, `installSignatureFiles`, `installFile`, `installHTMLFile`, `installTextFile`, and `copyImageAssets` methods
+  - Improved code readability and maintainability by reducing method complexity
+  - Enhanced security by consolidating path validation logic
+
+- **CLI Package Improvements**:
+  - Extracted CLI installation logic into separate functions: `runCLIInstallation`, `getUserInput`, and `createInstaller`
+  - Reduced code duplication and improved separation of concerns
+  - Enhanced error handling with more descriptive error messages
+  - Fixed duplicate flag definition issue
+
+- **Validation Package Enhancements**:
+  - Created `newValidationError` helper function for consistent error creation
+  - Extracted `getValidLines` and `validateNameLine` helper functions from `ValidateName`
+  - Extracted `validatePhoneNumberReason` helper function from `ValidatePhoneNumber`
+  - Reduced code duplication in error creation across all validation functions
+  - Improved maintainability by centralizing error creation logic
+
+**Benefits**:
+- Reduced cyclomatic complexity in large methods
+- Improved code readability and maintainability
+- Enhanced error handling consistency
+- Better separation of concerns
+- Easier testing and debugging
+- More maintainable codebase structure
+
+**Files affected**: `pkg/signature/signature.go`, `pkg/cli/cli.go`, `pkg/common/validation.go`
+
 ## 2024-12-19 - Migrated from JSON to YAML Configuration
 
 **Summary**: Replaced `config.json` with `config.yaml` throughout the codebase for better configuration management.

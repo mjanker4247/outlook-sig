@@ -63,66 +63,92 @@ The template to use is configured in the config.yaml file.`,
 				return nil
 			}
 
-			name, err := getOrPrompt(c.String("name"), "Enter your name: ")
-			if err != nil {
-				return fmt.Errorf("failed to get name: %v", err)
-			}
-			if name == "" {
-				return fmt.Errorf("name cannot be empty")
-			}
-			// Convert literal \n to actual newlines
-			name = strings.ReplaceAll(name, "\\n", "\n")
-
-			email, err := getOrPrompt(c.String("email"), "Enter your email: ")
-			if err != nil {
-				return fmt.Errorf("failed to get email: %v", err)
-			}
-			if err := common.ValidateEmail(email); err != nil {
-				return fmt.Errorf("invalid email: %v", err)
-			}
-
-			phone, err := getOrPrompt(c.String("phone"), "Enter your phone number: ")
-			if err != nil {
-				return fmt.Errorf("failed to get phone: %v", err)
-			}
-			if err := common.ValidatePhoneNumber(phone); err != nil {
-				return fmt.Errorf("invalid phone number: %v", err)
-			}
-
-			phoneDisplay, phoneLink, err := common.FormatPhoneNumber(phone, "DE")
-			if err != nil {
-				fmt.Println("Warning: Could not format phone number. Using raw input.")
-				phoneDisplay = phone
-				phoneLink = phone
-			}
-
-			data := signature.Data{
-				Name:         name,
-				Email:        email,
-				PhoneDisplay: phoneDisplay,
-				PhoneLink:    phoneLink,
-			}
-
-			templateBase, err := common.GetTemplateBase()
-			if err != nil {
-				return err
-			}
-
-			installer := signature.NewInstaller(templateBase)
-
-			// Override template source if specified via CLI flag
-			if templateSource := c.String("template-source"); templateSource != "" {
-				if installer.Config == nil {
-					if err := installer.LoadConfig(); err != nil {
-						return fmt.Errorf("failed to load configuration: %v", err)
-					}
-				}
-				installer.Config.TemplateSource = templateSource
-			}
-
-			return installer.Install(data)
+			return runCLIInstallation(c)
 		},
 	}
+}
+
+// runCLIInstallation handles the CLI installation flow
+func runCLIInstallation(c *cli.Context) error {
+	// Get and validate user input
+	data, err := getUserInput(c)
+	if err != nil {
+		return fmt.Errorf("failed to get user input: %v", err)
+	}
+
+	// Create and configure installer
+	installer, err := createInstaller(c)
+	if err != nil {
+		return fmt.Errorf("failed to create installer: %v", err)
+	}
+
+	// Install signature
+	return installer.Install(*data)
+}
+
+// getUserInput collects and validates user input
+func getUserInput(c *cli.Context) (*signature.Data, error) {
+	name, err := getOrPrompt(c.String("name"), "Enter your name: ")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get name: %v", err)
+	}
+	if name == "" {
+		return nil, fmt.Errorf("name cannot be empty")
+	}
+	// Convert literal \n to actual newlines
+	name = strings.ReplaceAll(name, "\\n", "\n")
+
+	email, err := getOrPrompt(c.String("email"), "Enter your email: ")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get email: %v", err)
+	}
+	if err := common.ValidateEmail(email); err != nil {
+		return nil, fmt.Errorf("invalid email: %v", err)
+	}
+
+	phone, err := getOrPrompt(c.String("phone"), "Enter your phone number: ")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get phone: %v", err)
+	}
+	if err := common.ValidatePhoneNumber(phone); err != nil {
+		return nil, fmt.Errorf("invalid phone number: %v", err)
+	}
+
+	phoneDisplay, phoneLink, err := common.FormatPhoneNumber(phone, "DE")
+	if err != nil {
+		fmt.Println("Warning: Could not format phone number. Using raw input.")
+		phoneDisplay = phone
+		phoneLink = phone
+	}
+
+	return &signature.Data{
+		Name:         name,
+		Email:        email,
+		PhoneDisplay: phoneDisplay,
+		PhoneLink:    phoneLink,
+	}, nil
+}
+
+// createInstaller creates and configures the signature installer
+func createInstaller(c *cli.Context) (*signature.Installer, error) {
+	templateBase, err := common.GetTemplateBase()
+	if err != nil {
+		return nil, err
+	}
+
+	installer := signature.NewInstaller(templateBase)
+
+	// Override template source if specified via CLI flag
+	if templateSource := c.String("template-source"); templateSource != "" {
+		if installer.Config == nil {
+			if err := installer.LoadConfig(); err != nil {
+				return nil, fmt.Errorf("failed to load configuration: %v", err)
+			}
+		}
+		installer.Config.TemplateSource = templateSource
+	}
+
+	return installer, nil
 }
 
 func getOrPrompt(value, prompt string) (string, error) {

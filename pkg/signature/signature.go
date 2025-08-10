@@ -203,142 +203,207 @@ func (i *Installer) replacePlaceholders(templateOrPath string, data Data) (strin
 
 // Install installs a signature with the given data
 func (i *Installer) Install(data Data) error {
+	if err := i.validateTemplateBase(); err != nil {
+		return err
+	}
+
+	if err := i.ensureConfigLoaded(); err != nil {
+		return err
+	}
+
+	if err := i.handleWebTemplates(); err != nil {
+		return err
+	}
+
+	sigName, err := i.validateAndSanitizeTemplateName()
+	if err != nil {
+		return err
+	}
+
+	sigDir, err := i.getSignatureDirectory()
+	if err != nil {
+		return err
+	}
+
+	return i.installSignatureFiles(sigName, sigDir, data)
+}
+
+// validateTemplateBase checks if the template base directory exists
+func (i *Installer) validateTemplateBase() error {
 	if _, err := i.fs.Stat(i.TemplateBase); os.IsNotExist(err) {
 		return fmt.Errorf("Templates directory not found at %s", i.TemplateBase)
 	}
+	return nil
+}
 
-	// Load configuration if not already loaded
+// ensureConfigLoaded loads configuration if not already loaded
+func (i *Installer) ensureConfigLoaded() error {
 	if i.Config == nil {
 		if err := i.LoadConfig(); err != nil {
 			return fmt.Errorf("failed to load configuration: %v", err)
 		}
 	}
+	return nil
+}
 
-	// Check template source and download if needed
+// handleWebTemplates downloads web templates if needed
+func (i *Installer) handleWebTemplates() error {
 	if i.Config.TemplateSource == "web" {
 		if err := i.DownloadWebTemplates(); err != nil {
 			return fmt.Errorf("failed to download web templates: %v", err)
 		}
 	}
+	return nil
+}
 
-	// Use the configured template name
+// validateAndSanitizeTemplateName validates and sanitizes the template name
+func (i *Installer) validateAndSanitizeTemplateName() (string, error) {
 	sigName := i.Config.TemplateName
-
-	// Validate template name and sanitize it
 	if sigName == "" {
-		return fmt.Errorf("Template name cannot be empty")
+		return "", fmt.Errorf("Template name cannot be empty")
 	}
+
 	if strings.ContainsAny(sigName, `/\:*?"<>|`) {
-		return fmt.Errorf("Invalid template name: contains invalid characters")
+		return "", fmt.Errorf("Invalid template name: contains invalid characters")
 	}
+
 	// Additional security: Clean the path and check for traversal attempts
 	cleanSigName := filepath.Clean(sigName)
 	if cleanSigName != sigName || strings.Contains(cleanSigName, "..") {
-		return fmt.Errorf("Invalid template name: potential path traversal detected")
+		return "", fmt.Errorf("Invalid template name: potential path traversal detected")
 	}
 
-	var sigDir string
-	var err error
+	return cleanSigName, nil
+}
+
+// getSignatureDirectory returns the signature directory path
+func (i *Installer) getSignatureDirectory() (string, error) {
 	if i.sigDir != "" {
-		sigDir = i.sigDir
-	} else {
-		sigDir, err = GetOutlookSignatureDir()
-		if err != nil {
-			return fmt.Errorf("failed to get signature directory: %v", err)
-		}
+		return i.sigDir, nil
+	}
+
+	sigDir, err := GetOutlookSignatureDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get signature directory: %v", err)
 	}
 
 	// Create the signature directory if it doesn't exist
 	if err := i.fs.MkdirAll(sigDir, 0755); err != nil {
-		return fmt.Errorf("failed to create signature directory: %v", err)
+		return "", fmt.Errorf("failed to create signature directory: %v", err)
 	}
 
+	return sigDir, nil
+}
+
+// installSignatureFiles installs the signature files with the given data
+func (i *Installer) installSignatureFiles(sigName, sigDir string, data Data) error {
 	fmt.Println("Installing signature to:", sigDir)
 	extensions := []string{".htm", ".txt"}
 	var errors []error
 
 	for _, ext := range extensions {
-		templatePath := filepath.Join(i.TemplateBase, cleanSigName+ext)
-		// Additional security: Verify the resolved path is within TemplateBase
-		if !strings.HasPrefix(templatePath, i.TemplateBase) {
-			errors = append(errors, fmt.Errorf("Invalid template path: outside of template directory"))
-			continue
+		if err := i.installFile(sigName, sigDir, ext, data); err != nil {
+			errors = append(errors, err)
 		}
-
-		destPath := filepath.Join(sigDir, cleanSigName+ext)
-		// Additional security: Verify the resolved path is within sigDir
-		if !strings.HasPrefix(destPath, sigDir) {
-			errors = append(errors, fmt.Errorf("Invalid destination path: outside of signature directory"))
-			continue
-		}
-
-		if _, err := i.fs.Stat(templatePath); os.IsNotExist(err) {
-			errors = append(errors, fmt.Errorf("Template file not found: %s", templatePath))
-			continue
-		}
-
-		if ext == ".htm" {
-			// Use html/template with size limit
-			tpl, err := template.New(filepath.Base(templatePath)).ParseFiles(templatePath)
-			if err != nil {
-				errors = append(errors, fmt.Errorf("failed to parse %s: %v", templatePath, err))
-				continue
-			}
-
-			// Use LimitedBuffer to prevent memory exhaustion
-			buf := &LimitedBuffer{
-				Buffer: bytes.Buffer{},
-				limit:  common.BufferSizeLimit,
-			}
-			if err := tpl.Execute(buf, data); err != nil {
-				errors = append(errors, fmt.Errorf("failed to execute template %s: %v", templatePath, err))
-				continue
-			}
-
-			if err := afero.WriteFile(i.fs, destPath, buf.Bytes(), 0644); err != nil {
-				errors = append(errors, fmt.Errorf("failed to write %s: %v", destPath, err))
-				continue
-			}
-
-			imageDirSrc := filepath.Join(i.TemplateBase, cleanSigName+"_files")
-			imageDirDst := filepath.Join(sigDir, cleanSigName+"_files")
-
-			// Additional security: Verify image directory paths
-			if !strings.HasPrefix(imageDirSrc, i.TemplateBase) || !strings.HasPrefix(imageDirDst, sigDir) {
-				errors = append(errors, fmt.Errorf("Invalid image directory path"))
-				continue
-			}
-
-			if _, err := i.fs.Stat(imageDirSrc); err == nil {
-				if err := i.copyDir(imageDirSrc, imageDirDst); err != nil {
-					errors = append(errors, fmt.Errorf("failed to copy image folder: %v", err))
-				} else {
-					fmt.Printf("Copied image assets to %s\n", imageDirDst)
-				}
-			}
-		} else if ext == ".txt" {
-			// Perform replacements with size limit
-			result, err := i.replacePlaceholders(templatePath, data)
-			if err != nil {
-				errors = append(errors, err)
-				continue
-			}
-
-			// Save the new file
-			err = afero.WriteFile(i.fs, destPath, []byte(result), 0644)
-			if err != nil {
-				errors = append(errors, fmt.Errorf("failed to write file %s: %v", destPath, err))
-				continue
-			}
-		} else {
-			errors = append(errors, fmt.Errorf("Unsupported file extension: %s", ext))
-		}
-
-		fmt.Printf("Created: %s\n", destPath)
 	}
 
 	if len(errors) > 0 {
 		return fmt.Errorf("Encountered %d errors during installation: %v", len(errors), errors)
+	}
+
+	return nil
+}
+
+// installFile installs a single signature file
+func (i *Installer) installFile(sigName, sigDir, ext string, data Data) error {
+	templatePath := filepath.Join(i.TemplateBase, sigName+ext)
+
+	// Security: Verify the resolved path is within TemplateBase
+	if !strings.HasPrefix(templatePath, i.TemplateBase) {
+		return fmt.Errorf("Invalid template path: outside of template directory")
+	}
+
+	destPath := filepath.Join(sigDir, sigName+ext)
+
+	// Security: Verify the resolved path is within sigDir
+	if !strings.HasPrefix(destPath, sigDir) {
+		return fmt.Errorf("Invalid destination path: outside of signature directory")
+	}
+
+	if _, err := i.fs.Stat(templatePath); os.IsNotExist(err) {
+		return fmt.Errorf("Template file not found: %s", templatePath)
+	}
+
+	switch ext {
+	case ".htm":
+		return i.installHTMLFile(templatePath, destPath, sigName, sigDir, data)
+	case ".txt":
+		return i.installTextFile(templatePath, destPath, data)
+	default:
+		return fmt.Errorf("Unsupported file extension: %s", ext)
+	}
+}
+
+// installHTMLFile installs an HTML signature file
+func (i *Installer) installHTMLFile(templatePath, destPath, sigName, sigDir string, data Data) error {
+	tpl, err := template.New(filepath.Base(templatePath)).ParseFiles(templatePath)
+	if err != nil {
+		return fmt.Errorf("failed to parse %s: %v", templatePath, err)
+	}
+
+	// Use LimitedBuffer to prevent memory exhaustion
+	buf := &LimitedBuffer{
+		Buffer: bytes.Buffer{},
+		limit:  common.BufferSizeLimit,
+	}
+
+	if err := tpl.Execute(buf, data); err != nil {
+		return fmt.Errorf("failed to execute template %s: %v", templatePath, err)
+	}
+
+	if err := afero.WriteFile(i.fs, destPath, buf.Bytes(), 0644); err != nil {
+		return fmt.Errorf("failed to write %s: %v", destPath, err)
+	}
+
+	// Copy image assets if they exist
+	if err := i.copyImageAssets(sigName, sigDir); err != nil {
+		return fmt.Errorf("failed to copy image assets: %v", err)
+	}
+
+	fmt.Printf("Created: %s\n", destPath)
+	return nil
+}
+
+// installTextFile installs a text signature file
+func (i *Installer) installTextFile(templatePath, destPath string, data Data) error {
+	result, err := i.replacePlaceholders(templatePath, data)
+	if err != nil {
+		return err
+	}
+
+	if err := afero.WriteFile(i.fs, destPath, []byte(result), 0644); err != nil {
+		return fmt.Errorf("failed to write file %s: %v", destPath, err)
+	}
+
+	fmt.Printf("Created: %s\n", destPath)
+	return nil
+}
+
+// copyImageAssets copies image assets if they exist
+func (i *Installer) copyImageAssets(sigName, sigDir string) error {
+	imageDirSrc := filepath.Join(i.TemplateBase, sigName+"_files")
+	imageDirDst := filepath.Join(sigDir, sigName+"_files")
+
+	// Security: Verify image directory paths
+	if !strings.HasPrefix(imageDirSrc, i.TemplateBase) || !strings.HasPrefix(imageDirDst, sigDir) {
+		return fmt.Errorf("Invalid image directory path")
+	}
+
+	if _, err := i.fs.Stat(imageDirSrc); err == nil {
+		if err := i.copyDir(imageDirSrc, imageDirDst); err != nil {
+			return fmt.Errorf("failed to copy image folder: %v", err)
+		}
+		fmt.Printf("Copied image assets to %s\n", imageDirDst)
 	}
 
 	return nil
