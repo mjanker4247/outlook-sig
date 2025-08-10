@@ -63,19 +63,28 @@ The template to use is configured in the config.yaml file.`,
 				return nil
 			}
 
-			name := getOrPrompt(c.String("name"), "Enter your name: ")
+			name, err := getOrPrompt(c.String("name"), "Enter your name: ")
+			if err != nil {
+				return fmt.Errorf("failed to get name: %v", err)
+			}
 			if name == "" {
 				return fmt.Errorf("name cannot be empty")
 			}
 			// Convert literal \n to actual newlines
 			name = strings.ReplaceAll(name, "\\n", "\n")
 
-			email := getOrPrompt(c.String("email"), "Enter your email: ")
+			email, err := getOrPrompt(c.String("email"), "Enter your email: ")
+			if err != nil {
+				return fmt.Errorf("failed to get email: %v", err)
+			}
 			if err := common.ValidateEmail(email); err != nil {
 				return fmt.Errorf("invalid email: %v", err)
 			}
 
-			phone := getOrPrompt(c.String("phone"), "Enter your phone number: ")
+			phone, err := getOrPrompt(c.String("phone"), "Enter your phone number: ")
+			if err != nil {
+				return fmt.Errorf("failed to get phone: %v", err)
+			}
 			if err := common.ValidatePhoneNumber(phone); err != nil {
 				return fmt.Errorf("invalid phone number: %v", err)
 			}
@@ -116,16 +125,15 @@ The template to use is configured in the config.yaml file.`,
 	}
 }
 
-func getOrPrompt(value, prompt string) string {
+func getOrPrompt(value, prompt string) (string, error) {
 	if strings.TrimSpace(value) != "" {
-		return value
+		return value, nil
 	}
 	fmt.Print(prompt)
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
-		os.Exit(1)
+		return "", fmt.Errorf("error reading input: %v", err)
 	}
-	return strings.TrimSpace(input)
+	return strings.TrimSpace(input), nil
 }

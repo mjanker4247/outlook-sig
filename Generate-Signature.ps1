@@ -39,6 +39,25 @@ if ($missingFields.Count -gt 0) {
     exit 3
 }
 
+# Format phone number for better compatibility with Go validation
+if (-not [string]::IsNullOrEmpty($telephoneNumber)) {
+    # Remove common separators and ensure proper format
+    $telephoneNumber = $telephoneNumber -replace '[\s\-\(\)\.]', ''
+    
+    # Add country code if missing (assuming German numbers)
+    if (-not $telephoneNumber.StartsWith("+")) {
+        if ($telephoneNumber.StartsWith("0")) {
+            # Replace leading 0 with +49 for German numbers
+            $telephoneNumber = "+49" + $telephoneNumber.Substring(1)
+        } else {
+            # Add +49 prefix for numbers without country code
+            $telephoneNumber = "+49" + $telephoneNumber
+        }
+    }
+    
+    Write-Host "Formatted phone number: $telephoneNumber" -ForegroundColor Gray
+}
+
 # Output user information
 Write-Host "`nUser Information:" -ForegroundColor Cyan
 Write-Host "DisplayName: $displayName" -ForegroundColor White
@@ -54,11 +73,20 @@ if (-not (Test-Path ".\SignatureInstaller.exe")) {
 # Call SignatureInstaller
 Write-Host "`nGenerating signature..." -ForegroundColor Cyan
 try {
-    & .\SignatureInstaller.exe -name "$displayName" -email "$email" -phone "$telephoneNumber"
+    if ([string]::IsNullOrEmpty($telephoneNumber)) {
+        # Call without phone number if it's missing
+        & .\SignatureInstaller.exe -name "$displayName" -email "$email"
+    } else {
+        # Call with all parameters
+        & .\SignatureInstaller.exe -name "$displayName" -email "$email" -phone "$telephoneNumber"
+    }
+    
     if ($LASTEXITCODE -eq 0) {
         Write-Host "Signature generated successfully!" -ForegroundColor Green
     } else {
         Write-Host "ERROR: SignatureInstaller failed with exit code $LASTEXITCODE" -ForegroundColor Red
+        Write-Host "This might be due to stricter validation in the new version." -ForegroundColor Yellow
+        Write-Host "Check the name format and phone number format." -ForegroundColor Yellow
         exit 5
     }
 } catch {
