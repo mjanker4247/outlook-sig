@@ -56,6 +56,24 @@ func newValidationError(field, message string) error {
 	}
 }
 
+// CleanLineBreaks removes multiple consecutive line breaks and normalizes them to single line breaks
+func CleanLineBreaks(input string) string {
+	// Split by line breaks
+	lines := strings.Split(input, "\n")
+
+	// Filter out empty lines and trim whitespace
+	var cleanLines []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" {
+			cleanLines = append(cleanLines, trimmed)
+		}
+	}
+
+	// Join back with single line breaks
+	return strings.Join(cleanLines, "\n")
+}
+
 // ValidateName performs comprehensive validation on a name string
 func ValidateName(name string) error {
 	// Trim whitespace only at the beginning and end

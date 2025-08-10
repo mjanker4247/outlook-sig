@@ -48,28 +48,10 @@ type HTMLData struct {
 	PhoneLink    string
 }
 
-// cleanLineBreaks removes multiple consecutive line breaks and normalizes them to single line breaks
-func cleanLineBreaks(input string) string {
-	// Split by line breaks
-	lines := strings.Split(input, "\n")
-
-	// Filter out empty lines and trim whitespace
-	var cleanLines []string
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed != "" {
-			cleanLines = append(cleanLines, trimmed)
-		}
-	}
-
-	// Join back with single line breaks
-	return strings.Join(cleanLines, "\n")
-}
-
 // ToHTMLData converts Data to HTMLData with proper HTML formatting
 func (d Data) ToHTMLData() HTMLData {
 	// Clean up multiple line breaks first
-	cleanName := cleanLineBreaks(d.Name)
+	cleanName := common.CleanLineBreaks(d.Name)
 
 	// Convert newlines to <br> tags for HTML display
 	htmlName := strings.ReplaceAll(cleanName, "\n", "<br>")
@@ -216,21 +198,10 @@ func (i *Installer) replacePlaceholders(templateOrPath string, data Data) (strin
 		content = templateOrPath
 	}
 
-	// Clean up name by removing empty lines
-	var cleanName string
-	if data.Name != "" {
-		var validLines []string
-		lines := strings.Split(data.Name, "\n")
-		for _, line := range lines {
-			if strings.TrimSpace(line) != "" {
-				validLines = append(validLines, strings.TrimSpace(line))
-			}
-		}
-		cleanName = strings.Join(validLines, "\n")
-	}
-
+	// Use cleaned data directly - line cleaning is handled in ToHTMLData for HTML files
+	// and consistently applied across all input processing
 	values := map[string]string{
-		"Name":         cleanName,
+		"Name":         data.Name,
 		"Email":        data.Email,
 		"PhoneDisplay": data.PhoneDisplay,
 		"PhoneLink":    data.PhoneLink,

@@ -5,6 +5,8 @@ import (
 	"html/template"
 	"strings"
 	"testing"
+
+	"outlook-signature/pkg/common"
 )
 
 func TestDataToHTMLData(t *testing.T) {
@@ -135,9 +137,9 @@ func TestCleanLineBreaks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := cleanLineBreaks(tt.input)
+			result := common.CleanLineBreaks(tt.input)
 			if result != tt.expected {
-				t.Errorf("cleanLineBreaks failed:\nInput:    %q\nExpected: %q\nGot:      %q", tt.input, tt.expected, result)
+				t.Errorf("CleanLineBreaks failed:\nInput:    %q\nExpected: %q\nGot:      %q", tt.input, tt.expected, result)
 			}
 		})
 	}

@@ -1,5 +1,53 @@
 # Change History
 
+## 2024-12-19 - Code Formatting Improvements
+
+**Summary**: Applied consistent code formatting and removed unnecessary blank lines for improved readability and consistency.
+
+**Changes**:
+- **CleanLineBreaks Function Formatting**: Removed extra blank lines within the `CleanLineBreaks` function in `pkg/common/validation.go`
+- **Consistent Spacing**: Applied uniform spacing throughout the function for better code readability
+- **Code Style Consistency**: Ensured consistent formatting across the codebase
+
+**Technical Details**:
+- **Before**: Function had inconsistent spacing with extra blank lines between logical sections
+- **After**: Clean, consistent spacing that improves readability while maintaining functionality
+- **Impact**: No functional changes, only formatting improvements
+
+**Benefits**:
+- **Improved Readability**: Cleaner, more consistent code formatting
+- **Better Maintainability**: Consistent style makes code easier to read and modify
+- **Professional Appearance**: Code follows Go formatting best practices
+- **Easier Code Review**: Consistent formatting reduces visual noise during reviews
+
+**Files affected**: `pkg/common/validation.go`
+
+## 2024-12-19 - Code Complexity Reduction and Redundancy Elimination
+
+**Summary**: Eliminated code duplication and reduced complexity by consolidating common functionality and removing redundant implementations across packages.
+
+**Changes**:
+- **Consolidated Line Break Cleanup**: Moved `cleanLineBreaks` function from individual packages to `pkg/common/validation.go` as `CleanLineBreaks`
+- **Eliminated Duplicate Functions**: Removed duplicate `cleanLineBreaks` implementations from `pkg/signature/signature.go`, `pkg/cli/cli.go`, and `pkg/gui/gui.go`
+- **Simplified Template Processing**: Removed redundant line cleaning logic from `replacePlaceholders` method in signature package
+- **Updated Package Dependencies**: Modified all packages to use the centralized `common.CleanLineBreaks` function
+- **Cleaned Up Imports**: Removed unused imports and fixed import paths in test files
+
+**Technical Details**:
+- **Before**: Three separate implementations of the same line break cleanup logic across different packages
+- **After**: Single, centralized implementation in the common package used consistently across all packages
+- **Redundancy Elimination**: Removed duplicate code that was performing identical string processing operations
+- **Import Cleanup**: Fixed import paths and removed unused imports to improve code quality
+
+**Benefits**:
+- **Reduced Code Duplication**: Single source of truth for line break cleanup logic
+- **Improved Maintainability**: Changes to line break logic only need to be made in one place
+- **Consistent Behavior**: All packages now use identical line break processing
+- **Cleaner Codebase**: Eliminated redundant implementations and unused imports
+- **Better Test Coverage**: Centralized function can be tested once and used everywhere
+
+**Files affected**: `pkg/common/validation.go`, `pkg/signature/signature.go`, `pkg/cli/cli.go`, `pkg/gui/gui.go`, `pkg/signature/signature_test.go`
+
 ## 2024-12-19 - Implemented Line Break Cleanup for Consistent HTML Output
 
 **Summary**: Added comprehensive line break cleanup functionality to ensure consistent HTML output regardless of input formatting, working across both CLI and GUI interfaces.

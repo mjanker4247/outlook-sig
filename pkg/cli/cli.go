@@ -99,7 +99,7 @@ func getUserInput(c *cli.Context) (*signature.Data, error) {
 	name = strings.ReplaceAll(name, "\\n", "\n")
 
 	// Clean up multiple consecutive line breaks
-	name = cleanLineBreaks(name)
+	name = common.CleanLineBreaks(name)
 
 	email, err := getOrPrompt(c.String("email"), "Enter your email: ")
 	if err != nil {
@@ -130,24 +130,6 @@ func getUserInput(c *cli.Context) (*signature.Data, error) {
 		PhoneDisplay: phoneDisplay,
 		PhoneLink:    phoneLink,
 	}, nil
-}
-
-// cleanLineBreaks removes multiple consecutive line breaks and normalizes them to single line breaks
-func cleanLineBreaks(input string) string {
-	// Split by line breaks
-	lines := strings.Split(input, "\n")
-
-	// Filter out empty lines and trim whitespace
-	var cleanLines []string
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed != "" {
-			cleanLines = append(cleanLines, trimmed)
-		}
-	}
-
-	// Join back with single line breaks
-	return strings.Join(cleanLines, "\n")
 }
 
 // createInstaller creates and configures the signature installer
