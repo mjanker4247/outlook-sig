@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -13,7 +12,13 @@ import (
 	"strings"
 
 	"github.com/spf13/afero"
+	"gopkg.in/yaml.v3"
 )
+
+// Config represents the application configuration
+type Config struct {
+	TemplateName string `yaml:"template_name"`
+}
 
 // Data represents the signature data structure
 type Data struct {
@@ -26,6 +31,7 @@ type Data struct {
 // Installer handles signature installation
 type Installer struct {
 	TemplateBase string
+	Config       *Config
 	sigDir       string // Optional override for signature directory
 	fs           afero.Fs
 }
@@ -36,6 +42,30 @@ func NewInstaller(templateBase string) *Installer {
 		TemplateBase: templateBase,
 		fs:           afero.NewOsFs(),
 	}
+}
+
+// LoadConfig loads the configuration from the build root directory
+func (i *Installer) LoadConfig() error {
+	// Get the build root directory (parent of templates directory)
+	buildRoot := filepath.Dir(i.TemplateBase)
+	configPath := filepath.Join(buildRoot, "config.yaml")
+
+	configData, err := afero.ReadFile(i.fs, configPath)
+	if err != nil {
+		return fmt.Errorf("failed to read config file %s: %v", configPath, err)
+	}
+
+	var config Config
+	if err := yaml.Unmarshal(configData, &config); err != nil {
+		return fmt.Errorf("failed to parse config file: %v", err)
+	}
+
+	if config.TemplateName == "" {
+		return fmt.Errorf("template_name is required in config file")
+	}
+
+	i.Config = &config
+	return nil
 }
 
 // GetOutlookSignatureDir returns the path to the Outlook signatures directory
@@ -89,10 +119,20 @@ func (i *Installer) replacePlaceholders(templateOrPath string, data Data) (strin
 }
 
 // Install installs a signature with the given data
-func (i *Installer) Install(data Data, sigName string) error {
+func (i *Installer) Install(data Data) error {
 	if _, err := i.fs.Stat(i.TemplateBase); os.IsNotExist(err) {
 		return fmt.Errorf("Templates directory not found at %s", i.TemplateBase)
 	}
+
+	// Load configuration if not already loaded
+	if i.Config == nil {
+		if err := i.LoadConfig(); err != nil {
+			return fmt.Errorf("Failed to load configuration: %v", err)
+		}
+	}
+
+	// Use the configured template name
+	sigName := i.Config.TemplateName
 
 	// Validate template name and sanitize it
 	if sigName == "" {
@@ -235,7 +275,7 @@ func (i *Installer) copyDir(src string, dst string) error {
 		return fmt.Errorf("path traversal detected")
 	}
 
-	return afero.Walk(i.fs, src, func(path string, info fs.FileInfo, err error) error {
+	return afero.Walk(i.fs, src, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}

@@ -46,28 +46,12 @@ func ShowGUI() {
 		return
 	}
 
-	// Get available templates
-	templates, err := common.GetAvailableTemplates()
-	if err != nil {
-		dialog.ShowError(fmt.Errorf("Failed to load templates: %v", err), window)
-		return
-	}
-
-	// Create template selection dropdown
-	templateSelect := widget.NewSelect(templates, func(selected string) {
-		// This function is called when a template is selected
-	})
-	if len(templates) > 0 {
-		templateSelect.SetSelected(templates[0])
-	}
-
 	// Create form
 	form := &widget.Form{
 		Items: []*widget.FormItem{
 			{Text: "Name", Widget: nameEntry},
 			{Text: "Email", Widget: emailEntry},
 			{Text: "Phone", Widget: phoneEntry},
-			{Text: "Template", Widget: templateSelect},
 		},
 		OnSubmit: func() {
 			// Validate inputs
@@ -103,7 +87,7 @@ func ShowGUI() {
 
 			// Install signature
 			installer := signature.NewInstaller(templateBase)
-			err = installer.Install(data, templateSelect.Selected)
+			err = installer.Install(data)
 			if err != nil {
 				dialog.ShowError(fmt.Errorf("Failed to install signature: %v", err), window)
 				return
@@ -120,6 +104,6 @@ func ShowGUI() {
 	)
 
 	window.SetContent(content)
-	window.Resize(fyne.NewSize(500, 300))
+	window.Resize(fyne.NewSize(500, 250))
 	window.ShowAndRun()
 }

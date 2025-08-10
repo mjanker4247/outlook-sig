@@ -11,6 +11,7 @@ A tool to install and manage email signatures in Microsoft Outlook for macOS and
 - Command-line interface (CLI) and Graphical User Interface (GUI)
 - Easy template customization
 - Images embedded in HTML, no need for external links
+- Configuration-based template selection
 
 ## Prerequisites
 
@@ -71,6 +72,16 @@ The built binaries will be available in the `build/` directory:
 - macOS: `build/SignatureInstaller`
 - Windows: `build/SignatureInstaller.exe`
 
+## Configuration
+
+The application uses a configuration file (`config.yaml`) located in the build root directory to specify which template to use. The configuration file should contain:
+
+```yaml
+template_name: "Standard"
+```
+
+The `template_name` field should match the base filename of your template (without the `.htm` or `.txt` extension).
+
 ## Usage
 
 ### GUI Mode
@@ -91,7 +102,8 @@ The GUI provides a form to enter:
 - Your full name
 - Email address
 - Phone number
-- Template name (defaults to "OutlookSignature")
+
+The template to use is automatically determined from the configuration file.
 
 ### Command Line Mode
 
@@ -104,7 +116,6 @@ SignatureInstaller[.exe] [options]
 - `--name`, `-n`: Your full name
 - `--email`, `-e`: Your email address
 - `--phone`, `-p`: Your phone number
-- `--template`, `-t`: Name of the template to use (default: "OutlookSignature")
 - `--gui`, `-g`: Launch in GUI mode
 
 Example:
@@ -126,9 +137,9 @@ Templates may include these placeholders:
 
 ### Template Files
 
-- `OutlookSignature.htm`: HTML signature template
-- `OutlookSignature.txt`: Plain text signature template
-- `OutlookSignature_files/`: Directory for images and other assets
+- `Standard.htm`: HTML signature template
+- `Standard.txt`: Plain text signature template
+- `Standard_files/`: Directory for images and other assets
 
 ## Signature Locations
 
@@ -166,3 +177,35 @@ The project includes VS Code configuration for easy development:
 ## License
 
 This project is licensed under the GNU General Public License v3.0 - see the LICENSE file for details.
+
+## Summary
+
+I've successfully removed the template scanner functionality and implemented a configuration-based approach. Here are the key changes made:
+
+### 1. **Removed Template Scanning**
+- Removed `GetAvailableTemplates()` function from `pkg/common/paths.go`
+- Removed template selection dropdown from the GUI
+- Removed `--template` flag from the CLI
+
+### 2. **Added Configuration System**
+- Created a `Config` struct in `pkg/signature/signature.go` with `TemplateName` field
+- Added `LoadConfig()` method to load configuration from `config.yaml` in the build root
+- Modified the `Install()` method to use the configured template instead of a parameter
+
+### 3. **Updated User Interfaces**
+- **CLI**: Removed template parameter, now automatically uses configured template
+- **GUI**: Removed template selection, simplified form with only name, email, and phone fields
+
+### 4. **Configuration File**
+- Created `config.yaml` that specifies which template to use
+- The file is placed in the build root directory alongside the executable
+
+### 5. **Build Process Updates**
+- Updated `Taskfile.yml` to copy the configuration file to the build directory
+- Added `copy-config` task for both platforms
+
+### 6. **Documentation Updates**
+- Updated `README.md` to reflect the new configuration-based approach
+- Removed references to template selection and scanning
+
+The application now uses a single, preconfigured template specified in the configuration file, eliminating the need for template scanning while maintaining the same functionality for users. The template name is automatically loaded from the configuration when installing signatures.

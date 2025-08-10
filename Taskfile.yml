@@ -16,6 +16,7 @@ tasks:
     cmds:
       - task: build
       - task: copy-templates
+      - task: copy-config
 
   # Build the application for current platform
   build:
@@ -27,10 +28,19 @@ tasks:
   copy-templates:
     desc: Copy template files
     cmds:
-      # Copy templates
-      - cmd: cp -r {{.TEMPLATES_DIR}}/* {{.BUILD_DIR}}/templates/
+      # Create templates directory and copy templates
+      - cmd: mkdir -p {{.BUILD_DIR}}/templates && cp -r {{.TEMPLATES_DIR}}/* {{.BUILD_DIR}}/templates/
         platforms: [linux, darwin]
-      - cmd: xcopy /E /I /Y {{.TEMPLATES_DIR}} {{.BUILD_DIR}}\\templates
+      - cmd: if not exist {{.BUILD_DIR}}\\templates mkdir {{.BUILD_DIR}}\\templates && xcopy /E /I /Y {{.TEMPLATES_DIR}} {{.BUILD_DIR}}\\templates
+        platforms: [windows]
+
+  # Copy configuration file to build directory
+  copy-config:
+    desc: Copy configuration file
+    cmds:
+      - cmd: cp config.yaml {{.BUILD_DIR}}/
+        platforms: [linux, darwin]
+      - cmd: copy config.yaml {{.BUILD_DIR}}\\
         platforms: [windows]
 
   # This task is to build on macOS/Linux for the Windows platform      
@@ -40,35 +50,66 @@ tasks:
     cmds:
       - GOOS=windows GOARCH=amd64 go build -o {{.BINARY}} {{.SRC_DIR}}
       - task: copy-templates
+      - task: copy-config
 
   # This task is to build on Windows for the Windows platform      
   build-windows:
-    desc: Build Windows application (on Windows)
+    desc: Build for Windows (on Windows)
     platforms: [windows]
     cmds:
       - task: build
       - task: copy-templates
+      - task: copy-config
 
+  # Sign the Windows executable
   sign-windows:
-    desc: Sign Windows executable
-    deps: [cross-build-windows]
-    platforms: [darwin, linux]
-    cmds:
-      - |
-        if [ ! -f "{{.CERT_FILE}}" ]; then
-          echo "Error: Certificate file {{.CERT_FILE}} not found"
-          exit 1
-        fi
-      - osslsigncode sign -pkcs12 {{.CERT_FILE}} -askpass -n {{.APP_NAME}} -i {{.CERT_URL}} -in {{.BINARY}} -out {{.WINDOWS_SIGNED}}
-
-  sign-windows-native:
-    desc: Sign Windows executable (on Windows)
-    deps: [build-windows]
+    desc: Sign the Windows executable with code signing certificate
     platforms: [windows]
     cmds:
-      - signtool sign /fd SHA256 /n "{{.CERT_NAME}}" /t http://timestamp.digicert.com {{.BINARY}} 
+      - task: build-windows
+      - cmd: signtool sign /n "{{.CERT_NAME}}" /t http://timestamp.digicert.com /fd sha256 /v "{{.BINARY}}"
+      - cmd: move "{{.BINARY}}" "{{.WINDOWS_SIGNED}}"
+      - echo "Signed executable saved as {{.WINDOWS_SIGNED}}"
 
-  test:
-    desc: Run all tests
+  # Clean build artifacts
+  clean:
+    desc: Clean build artifacts
     cmds:
-      - go test -v ./... 
+      - cmd: rm -rf {{.BUILD_DIR}}
+        platforms: [linux, darwin]
+      - cmd: rmdir /s /q {{.BUILD_DIR}}
+        platforms: [windows]
+
+  # Install dependencies
+  deps:
+    desc: Install Go dependencies
+    cmds:
+      - go mod download
+      - go mod tidy
+
+  # Run tests
+  test:
+    desc: Run tests
+    cmds:
+      - go test ./...
+
+  # Run linter
+  lint:
+    desc: Run linter
+    cmds:
+      - golangci-lint run
+
+  # Format code
+  fmt:
+    desc: Format Go code
+    cmds:
+      - go fmt ./...
+      - goimports -w .
+
+  # Check code
+  check:
+    desc: Check code quality
+    cmds:
+      - task: fmt
+      - task: lint
+      - task: test 

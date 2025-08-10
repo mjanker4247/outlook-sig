@@ -26,7 +26,8 @@ Templates may include these placeholders
 {{ .PhoneLink }}
 {{ .PhoneDisplay }}
 	
-Images and .htm/.txt files are copied and filled automatically.`,
+Images and .htm/.txt files are copied and filled automatically.
+The template to use is configured in the config.yaml file.`,
 		UsageText: "SignatureInstaller.exe [options]",
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
@@ -48,12 +49,6 @@ Images and .htm/.txt files are copied and filled automatically.`,
 				Name:    "phone",
 				Aliases: []string{"p"},
 				Usage:   "Your phone number",
-			},
-			&cli.StringFlag{
-				Name:    "template",
-				Aliases: []string{"t"},
-				Usage:   "Base filename of signature template",
-				Value:   "OutlookSignature",
 			},
 		},
 		Action: func(c *cli.Context) error {
@@ -78,11 +73,6 @@ Images and .htm/.txt files are copied and filled automatically.`,
 				return fmt.Errorf("invalid phone number: %v", err)
 			}
 
-			sigName := c.String("template")
-			if err := common.ValidateSignatureName(sigName); err != nil {
-				return err
-			}
-
 			phoneDisplay, phoneLink, err := common.FormatPhoneNumber(phone, "DE")
 			if err != nil {
 				fmt.Println("Warning: Could not format phone number. Using raw input.")
@@ -103,7 +93,7 @@ Images and .htm/.txt files are copied and filled automatically.`,
 			}
 
 			installer := signature.NewInstaller(templateBase)
-			return installer.Install(data, sigName)
+			return installer.Install(data)
 		},
 	}
 }
