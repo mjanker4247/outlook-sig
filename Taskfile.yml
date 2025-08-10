@@ -74,6 +74,34 @@ tasks:
       - go mod download
       - go mod tidy
 
+  # Update and check Go modules
+  modules:
+    desc: Update and check Go modules
+    cmds:
+      - go mod download
+      - go mod verify
+      - go mod tidy
+      - go list -mod=mod -m all
+      - go list -mod=mod -u -m all
+
+  # Update Go modules to latest versions
+  update-modules:
+    desc: Update Go modules to latest versions
+    cmds:
+      - go get -u ./...
+      - go mod tidy
+      - go mod vendor
+      - go mod verify
+      - echo "Modules updated successfully"
+
+  # Sync vendor directory
+  vendor:
+    desc: Sync vendor directory with go.mod
+    cmds:
+      - go mod vendor
+      - go mod verify
+      - echo "Vendor directory synced successfully"
+
   # Run tests
   test:
     desc: Run tests
