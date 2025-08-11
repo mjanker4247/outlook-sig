@@ -1,0 +1,163 @@
+# Cursor Rules for Outlook Signature Project
+
+## Rule: Automatically Maintain History File
+
+### Description
+This rule ensures that all significant changes to the codebase are automatically documented in a `history.md` file with consistent formatting and comprehensive change summaries.
+
+### Applies To
+- **Files:** All source code files, configuration files, and documentation
+- **When:** After making functional changes, bug fixes, or significant improvements
+
+### Requirements
+1. **Create History File**: If `history.md` doesn't exist, create it with proper structure
+2. **Update After Changes**: After completing significant changes, add a new entry to `history.md`
+3. **Consistent Format**: Follow the established format for all history entries
+4. **Comprehensive Documentation**: Include summary, changes, technical details, benefits, and affected files
+
+### History Entry Format
+```markdown
+## YYYY-MM-DD - Brief Summary of Changes
+
+**Summary**: One-line description of what was accomplished.
+
+**Changes**:
+- **Category**: Specific change description
+- **Category**: Another specific change description
+
+**Technical Details**:
+- **Before**: What the code/functionality was like before
+- **After**: What the code/functionality is like after
+- **Implementation**: How the change was implemented
+
+**Benefits**:
+- **Benefit Category**: Specific benefit description
+- **Benefit Category**: Another specific benefit description
+
+**Files affected**: `file1.go`, `file2.go`, `config.yaml`
+```
+
+### Implementation Guidelines
+1. **Automatic Detection**: After making changes, automatically prompt to update history
+2. **Change Classification**: Categorize changes by type (bug fix, feature, refactor, etc.)
+3. **File Tracking**: Automatically identify and list all modified files
+4. **Benefit Analysis**: Help identify and document the benefits of each change
+5. **Consistency Check**: Ensure all history entries follow the same format
+
+### Examples of When to Update History
+- **Bug Fixes**: When resolving issues or errors
+- **Feature Additions**: When adding new functionality
+- **Refactoring**: When improving code structure or performance
+- **Configuration Changes**: When modifying build or runtime configuration
+- **Documentation Updates**: When improving user or developer documentation
+- **Dependency Updates**: When updating or changing external dependencies
+
+### Quality Standards
+- **Accuracy**: Ensure all technical details are correct and verifiable
+- **Completeness**: Document all significant changes, not just obvious ones
+- **Clarity**: Use clear, concise language that future developers can understand
+- **Consistency**: Maintain uniform formatting and structure across all entries
+- **Relevance**: Focus on changes that affect functionality, maintainability, or user experience
+
+### Automation Features
+- **Change Detection**: Automatically detect when files have been modified
+- **Entry Generation**: Suggest history entry content based on file changes
+- **Format Validation**: Ensure new entries follow the established format
+- **File Impact Analysis**: Automatically identify which files were affected
+- **Date Stamping**: Automatically add current date to new entries
+
+### Maintenance
+- **Regular Review**: Periodically review and clean up history entries
+- **Format Updates**: Update the format if better documentation patterns emerge
+- **Archive Old Entries**: Consider archiving very old entries to keep current history focused
+- **Cross-Reference**: Link history entries to related issues, pull requests, or documentation
+
+## Rule: Go Code Must Follow Common Programming Guidelines
+
+### Description
+This rule enforces idiomatic Go coding practices based on official Go conventions, Effective Go, and commonly used style guides. It ensures your code is readable, maintainable, and tool-compatible.
+
+### Applies To
+- **Files:** `*.go`
+
+### Rationale
+Go favors simplicity, readability, and idiomatic patterns. Following these guidelines helps ensure code quality, eases onboarding, and maximizes compatibility with Go tools and linters.
+
+### Violations
+Raise a warning or suggestion if any of the following are observed:
+- Code is not formatted with `gofmt`.
+- Identifiers use underscores (`_`) or non-camelCase naming.
+- Exported declarations lack Godoc-style comments.
+- Error handling does not follow `if err != nil` idiom.
+- Overuse of `panic`, deep nesting, or non-idiomatic constructs.
+- Poor import organization (not grouped: stdlib, 3rd-party, local).
+- Test functions not named `TestXxx`.
+- Global state in tests.
+
+### Examples
+
+```go
+// ✅ Good: idiomatic naming, formatting, and error handling
+type Account struct {
+    ID   int
+    Name string
+}
+
+func NewAccount(id int, name string) *Account {
+    return &Account{ID: id, Name: name}
+}
+
+func (a *Account) Greet() string {
+    return fmt.Sprintf("Hello, %s!", a.Name)
+}
+```
+
+```go
+// ❌ Bad: uses underscores and unexported types, no error check
+type account_struct {
+    account_id int
+    account_name string
+}
+
+func create_account(account_id int, account_name string) account_struct {
+    return account_struct{account_id, account_name}
+}
+```
+
+### Auto-Fixes
+- Use `gofmt` or `goimports` for formatting and import grouping.
+- Rename identifiers to follow camelCase and PascalCase.
+- Add missing comments to exported symbols.
+- Replace `panic` with error returns unless truly unrecoverable.
+
+### Tools Recommended
+- `gofmt`, `goimports` – for formatting and imports.
+- `golangci-lint` – includes `govet`, `golint`, `staticcheck`, etc.
+- `go vet` – built-in static analyzer.
+- `staticcheck` – powerful linting tool.
+
+### Severity
+warning
+
+## Rule: Code Quality Guidelines
+
+### Description
+Guidelines for writing clean, maintainable, and human-readable code. Apply these rules when writing or reviewing code to ensure consistency and quality.
+
+### Applies To
+- **Files:** All source code files
+
+### Guidelines
+- **Constants Over Magic Numbers**: Replace hard-coded values with named constants
+- **Meaningful Names**: Variables, functions, and classes should reveal their purpose
+- **Smart Comments**: Don't comment on what the code does - make the code self-documenting
+- **Single Responsibility**: Each function should do exactly one thing
+- **DRY (Don't Repeat Yourself)**: Extract repeated code into reusable functions
+- **Clean Structure**: Keep related code together and organize logically
+- **Encapsulation**: Hide implementation details and expose clear interfaces
+- **Code Quality Maintenance**: Refactor continuously and fix technical debt early
+- **Testing**: Write tests before fixing bugs and keep tests readable
+- **Version Control**: Write clear commit messages and make small, focused commits
+
+### Severity
+warning

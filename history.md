@@ -1,5 +1,40 @@
 # Change History
 
+## 2024-12-19 - Fixed Cross-Compilation for Windows and Streamlined VSCode Tasks
+
+**Summary**: Resolved cross-compilation issues from macOS to Windows and cleaned up VSCode task configuration for better development workflow.
+
+**Changes**:
+- **Cross-Compilation Fix**: 
+  - Implemented build tag system to conditionally compile GUI components only for current platform
+  - Added `//go:build !windows` constraint to `pkg/gui/gui.go` to exclude GUI when targeting Windows
+  - Created `pkg/gui/gui_windows.go` with stub implementation for Windows builds
+  - Modified CLI package to detect cross-compilation and provide helpful CLI usage instructions
+  - Updated Taskfile.yml to use proper build tags (`-tags "!windows"`) for cross-compilation
+
+- **VSCode Task Cleanup**:
+  - Removed unused and non-functional tasks (Run, Sign Windows)
+  - Consolidated duplicate problemMatcher configurations
+  - Added useful development tasks (Test, Lint, Format, Check Code Quality)
+  - Reorganized tasks into logical groups (Build, Test/Quality)
+  - Streamlined task configuration for better maintainability
+
+**Technical Details**:
+- **Before**: Cross-compilation failed due to Fyne GUI framework's platform-specific dependencies (OpenGL bindings excluded for Windows target)
+- **After**: Build tag system allows successful cross-compilation by excluding GUI components when targeting Windows
+- **Build Tags**: `//go:build !windows` ensures GUI only compiles when NOT targeting Windows
+- **Cross-Platform Support**: Application gracefully handles GUI mode requests during cross-compilation with helpful CLI instructions
+- **Task Organization**: VSCode tasks now provide streamlined development workflow with logical grouping
+
+**Benefits**:
+- **Successful Cross-Compilation**: Can now build Windows executables from macOS
+- **Platform-Aware Builds**: GUI components only compiled when appropriate for target platform
+- **Better Development Experience**: Cleaner, more focused VSCode task configuration
+- **Improved Workflow**: Added essential development tasks (test, lint, format, check)
+- **Cross-Platform Development**: Support for building Windows targets from macOS development environment
+
+**Files affected**: `pkg/gui/gui.go`, `pkg/gui/gui_windows.go`, `pkg/cli/cli.go`, `Taskfile.yml`, `.vscode/tasks.json`
+
 ## 2024-12-19 - Code Formatting Improvements
 
 **Summary**: Applied consistent code formatting and removed unnecessary blank lines for improved readability and consistency.

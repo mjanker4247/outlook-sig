@@ -59,6 +59,15 @@ The template to use is configured in the config.yaml file.`,
 		Action: func(c *cli.Context) error {
 			// Check if GUI mode is requested or no arguments are provided
 			if c.Bool("gui") || len(os.Args) == 1 {
+				// Check if we're cross-compiling (GOOS will be set to windows)
+				if os.Getenv("GOOS") == "windows" {
+					fmt.Println("GUI mode is not available during cross-compilation.")
+					fmt.Println("Please use CLI mode with appropriate flags:")
+					fmt.Println("  SignatureInstaller.exe --name \"Your Name\" --email \"your.email@example.com\" --phone \"+49 123 456789\"")
+					fmt.Println("")
+					fmt.Println("Or build on Windows to enable GUI mode.")
+					return nil
+				}
 				gui.ShowGUI()
 				return nil
 			}

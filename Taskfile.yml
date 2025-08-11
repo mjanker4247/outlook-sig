@@ -37,7 +37,17 @@ tasks:
     desc: Cross-compile for Windows (from macOS/Linux)
     platforms: [darwin, linux]
     cmds:
-      - GOOS=windows GOARCH=amd64 go build -o {{.BINARY}} {{.SRC_DIR}}
+      - mkdir -p {{.BUILD_DIR}}
+      - GOOS=windows GOARCH=amd64 go build -tags "!windows" -o {{.BINARY}} {{.SRC_DIR}}
+      - task: copy-config
+
+  # Build CLI-only version for Windows (no GUI dependencies)
+  cross-build-windows-cli:
+    desc: Cross-compile CLI-only version for Windows (from macOS/Linux)
+    platforms: [darwin, linux]
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - GOOS=windows GOARCH=amd64 go build -tags "!windows" -o {{.BUILD_DIR}}/{{.APP_NAME}}-cli.exe {{.SRC_DIR}}
       - task: copy-config
 
   # This task is to build on Windows for the Windows platform      
