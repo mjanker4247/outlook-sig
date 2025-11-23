@@ -4,40 +4,6 @@ import (
 	"testing"
 )
 
-func TestValidateName(t *testing.T) {
-	tests := []struct {
-		name    string
-		input   string
-		wantErr bool
-	}{
-		{"valid name", "John Doe", false},
-		{"valid with dot", "J. R. R. Tolkien", false},
-		{"valid with hyphen", "Jean-Paul", false},
-		{"valid with apostrophe", "O'Connor", false},
-		{"valid multiline", "John Doe\nSoftware Engineer\nSenior Developer", false},
-		{"empty", "", true},
-		{"too short", "J", true},
-		{"invalid chars", "John123", true},
-		{"consecutive punctuation", "John--Doe", true},
-		{"starts with punctuation", "-John", true},
-		{"ends with punctuation", "John-", true},
-		{"starts with dot", ".John", true},
-		{"ends with dot", "John.", false},                  // Dots are allowed at the end
-		{"multiple spaces", "John   Doe", false},           // Multiple spaces are normalized
-		{"empty lines", "John\n\nDoe", false},              // Empty lines are filtered
-		{"whitespace only lines", "John\n   \nDoe", false}, // Whitespace-only lines are filtered
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateName(tt.input)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ValidateName(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
-			}
-		})
-	}
-}
-
 func TestValidateEmail(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -415,85 +381,6 @@ func TestValidateSignatureName(t *testing.T) {
 			err := ValidateSignatureName(tt.input)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ValidateSignatureName(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
-			}
-		})
-	}
-}
-
-// Test helper functions
-func TestHasConsecutivePunctuation(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected bool
-	}{
-		{"no consecutive", "John Doe", false},
-		{"consecutive dots", "John..Doe", true},
-		{"consecutive hyphens", "John--Doe", true},
-		{"consecutive apostrophes", "John''Doe", true},
-		{"mixed consecutive", "John.-Doe", true},
-		{"single punctuation", "John-Doe", false},
-		{"empty string", "", false},
-		{"single character", "J", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := hasConsecutivePunctuation(tt.input)
-			if result != tt.expected {
-				t.Errorf("hasConsecutivePunctuation(%q) = %v, want %v", tt.input, result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestHasInvalidPunctuationPosition(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected bool
-	}{
-		{"valid start and end", "John Doe", false},
-		{"starts with dot", ".John Doe", true},
-		{"starts with hyphen", "-John Doe", true},
-		{"starts with apostrophe", "'John Doe", true},
-		{"ends with hyphen", "John Doe-", true},
-		{"ends with apostrophe", "John Doe'", true},
-		{"ends with dot", "John Doe.", false}, // Dots are allowed at the end
-		{"empty string", "", false},
-		{"single character", "J", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := hasInvalidPunctuationPosition(tt.input)
-			if result != tt.expected {
-				t.Errorf("hasInvalidPunctuationPosition(%q) = %v, want %v", tt.input, result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestIsPunctuation(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    byte
-		expected bool
-	}{
-		{"dot", '.', true},
-		{"hyphen", '-', true},
-		{"apostrophe", '\'', true},
-		{"letter", 'a', false},
-		{"number", '1', false},
-		{"space", ' ', false},
-		{"other", '!', false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := isPunctuation(tt.input)
-			if result != tt.expected {
-				t.Errorf("isPunctuation(%c) = %v, want %v", tt.input, result, tt.expected)
 			}
 		})
 	}

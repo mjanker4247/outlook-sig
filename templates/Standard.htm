@@ -120,6 +120,9 @@
             <p class="MsoNormalName">
               <span lang="EN-US">{{ .Name | safeHTML }}</span>
             </p>
+            <p class="MsoNormalName">
+              <span lang="EN-US">{{ .Title | safeHTML }}</span>
+            </p>
             <p class="MsoNormalEmail">
               <span aria-hidden="true">&#9993;&nbsp;</span>
               <a href="mailto:{{ .Email }}" aria-label="Email {{ .Email }}">

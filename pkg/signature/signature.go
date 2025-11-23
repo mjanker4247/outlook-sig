@@ -34,34 +34,11 @@ type Config struct {
 
 // Data represents the signature data structure
 type Data struct {
-	Name         string // Can contain multiple lines (e.g., name, profession, title)
+	Name         string
+	Title        string
 	Email        string
 	PhoneDisplay string
 	PhoneLink    string
-}
-
-// HTMLData represents the signature data structure with HTML-safe formatting
-type HTMLData struct {
-	Name         htmltemplate.HTML // Name with newlines converted to <br> tags
-	Email        string
-	PhoneDisplay string
-	PhoneLink    string
-}
-
-// ToHTMLData converts Data to HTMLData with proper HTML formatting
-func (d Data) ToHTMLData() HTMLData {
-	// Clean up multiple line breaks first
-	cleanName := common.CleanLineBreaks(d.Name)
-
-	// Convert newlines to <br> tags for HTML display
-	htmlName := strings.ReplaceAll(cleanName, "\n", "<br>")
-
-	return HTMLData{
-		Name:         htmltemplate.HTML(htmlName),
-		Email:        d.Email,
-		PhoneDisplay: d.PhoneDisplay,
-		PhoneLink:    d.PhoneLink,
-	}
 }
 
 // Installer handles signature installation
@@ -202,6 +179,7 @@ func (i *Installer) replacePlaceholders(templateOrPath string, data Data) (strin
 	// and consistently applied across all input processing
 	values := map[string]string{
 		"Name":         data.Name,
+		"Title":        data.Title,
 		"Email":        data.Email,
 		"PhoneDisplay": data.PhoneDisplay,
 		"PhoneLink":    data.PhoneLink,
@@ -371,16 +349,13 @@ func (i *Installer) installHTMLFile(templatePath, destPath, sigName, sigDir stri
 		return fmt.Errorf("failed to parse %s: %v", templatePath, err)
 	}
 
-	// Convert data to HTML-safe format with <br> tags for newlines
-	htmlData := data.ToHTMLData()
-
 	// Use LimitedBuffer to prevent memory exhaustion
 	buf := &LimitedBuffer{
 		Buffer: bytes.Buffer{},
 		limit:  common.BufferSizeLimit,
 	}
 
-	if err := tpl.Execute(buf, htmlData); err != nil {
+	if err := tpl.Execute(buf, data); err != nil {
 		return fmt.Errorf("failed to execute template %s: %v", templatePath, err)
 	}
 

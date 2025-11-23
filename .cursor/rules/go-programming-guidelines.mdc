@@ -66,6 +66,7 @@ func create_account(account_id int, account_name string) account_struct {
 - `golangci-lint` – includes `govet`, `golint`, `staticcheck`, etc.
 - `go vet` – built-in static analyzer.
 - `staticcheck` – powerful linting tool.
+- `task` - build tool
 
 ### Severity
 warning

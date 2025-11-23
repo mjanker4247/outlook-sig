@@ -38,7 +38,12 @@ The template to use is configured in the config.yaml file.`,
 			&cli.StringFlag{
 				Name:    "name",
 				Aliases: []string{"n"},
-				Usage:   "Your name (can include profession/title on separate lines)",
+				Usage:   "Your name",
+			},
+			&cli.StringFlag{
+				Name:    "title",
+				Aliases: []string{"t"},
+				Usage:   "Your profession or title",
 			},
 			&cli.StringFlag{
 				Name:    "email",
@@ -63,7 +68,7 @@ The template to use is configured in the config.yaml file.`,
 				if os.Getenv("GOOS") == "windows" {
 					fmt.Println("GUI mode is not available during cross-compilation.")
 					fmt.Println("Please use CLI mode with appropriate flags:")
-					fmt.Println("  SignatureInstaller.exe --name \"Your Name\" --email \"your.email@example.com\" --phone \"+49 123 456789\"")
+					fmt.Println("  SignatureInstaller.exe --name \"Your Name\" --title \"Your Title\" --email \"your.email@example.com\" --phone \"+49 123 456789\"")
 					fmt.Println("")
 					fmt.Println("Or build on Windows to enable GUI mode.")
 					return nil
@@ -104,11 +109,10 @@ func getUserInput(c *cli.Context) (*signature.Data, error) {
 	if name == "" {
 		return nil, fmt.Errorf("name cannot be empty")
 	}
-	// Convert literal \n to actual newlines
-	name = strings.ReplaceAll(name, "\\n", "\n")
-
-	// Clean up multiple consecutive line breaks
-	name = common.CleanLineBreaks(name)
+	title, err := getOrPrompt(c.String("title"), "Enter your title: ")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get title: %v", err)
+	}
 
 	email, err := getOrPrompt(c.String("email"), "Enter your email: ")
 	if err != nil {
@@ -135,6 +139,7 @@ func getUserInput(c *cli.Context) (*signature.Data, error) {
 
 	return &signature.Data{
 		Name:         name,
+		Title:        title,
 		Email:        email,
 		PhoneDisplay: phoneDisplay,
 		PhoneLink:    phoneLink,

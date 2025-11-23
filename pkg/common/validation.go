@@ -56,24 +56,6 @@ func newValidationError(field, message string) error {
 	}
 }
 
-// CleanLineBreaks removes multiple consecutive line breaks and normalizes them to single line breaks
-func CleanLineBreaks(input string) string {
-	// Split by line breaks
-	lines := strings.Split(input, "\n")
-
-	// Filter out empty lines and trim whitespace
-	var cleanLines []string
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed != "" {
-			cleanLines = append(cleanLines, trimmed)
-		}
-	}
-
-	// Join back with single line breaks
-	return strings.Join(cleanLines, "\n")
-}
-
 // ValidateName performs comprehensive validation on a name string
 func ValidateName(name string) error {
 	// Trim whitespace only at the beginning and end
@@ -81,91 +63,53 @@ func ValidateName(name string) error {
 
 	// Check if empty
 	if name == "" {
-		return newValidationError("Name", ErrNameEmpty)
-	}
-
-	// Split into lines and filter out empty/non-visible lines
-	validLines := getValidLines(name)
-	if len(validLines) == 0 {
-		return newValidationError("Name", ErrNameTooShort)
-	}
-
-	// Check if name is too short (less than MinNameLength characters)
-	if len(validLines[0]) < MinNameLength {
-		return newValidationError("Name", fmt.Sprintf("first line must be at least %d characters long", MinNameLength))
-	}
-
-	// Validate each valid line
-	for i, line := range validLines {
-		if err := validateNameLine(line, i+1); err != nil {
-			return err
+		return &ValidationError{
+			Field:   "Name",
+			Message: "cannot be empty",
 		}
 	}
 
-	return nil
-}
-
-// getValidLines splits name into lines and filters out empty ones
-func getValidLines(name string) []string {
-	var validLines []string
-	lines := strings.Split(name, "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			validLines = append(validLines, line)
+	// Check if name is too short (less than 2 characters)
+	if len(name) < 2 {
+		return &ValidationError{
+			Field:   "Name",
+			Message: "must be at least 2 characters long",
 		}
 	}
-	return validLines
-}
 
-// validateNameLine validates a single line of the name
-func validateNameLine(line string, lineNumber int) error {
-	// Use govalidator to check if each line is valid
-	if !govalidator.Matches(line, `^[a-zA-Z\s\.\-']+$`) {
-		return newValidationError("Name", fmt.Sprintf("line %d %s", lineNumber, ErrNameInvalidChars))
+	// Use govalidator to check if the name is valid
+	if !govalidator.Matches(name, "^[a-zA-Z\\s\\.\\-']+$") {
+		return &ValidationError{
+			Field:   "Name",
+			Message: "can only contain letters, spaces, dots, hyphens, and apostrophes",
+		}
 	}
 
 	// Normalize multiple spaces into a single space
-	line = strings.Join(strings.Fields(line), " ")
+	name = strings.Join(strings.Fields(name), " ")
 
 	// Check for multiple consecutive punctuation or special characters
-	if hasConsecutivePunctuation(line) {
-		return newValidationError("Name", fmt.Sprintf("line %d %s", lineNumber, ErrNameConsecutivePunct))
+	for i := range name[:len(name)-1] {
+		current := name[i]
+		next := name[i+1]
+		if (current == '.' || current == '-' || current == '\'') && (next == '.' || next == '-' || next == '\'') {
+			return &ValidationError{
+				Field:   "Name",
+				Message: "cannot contain multiple consecutive punctuation marks",
+			}
+		}
 	}
 
 	// Check for punctuation at the start or end
-	if hasInvalidPunctuationPosition(line) {
-		return newValidationError("Name", fmt.Sprintf("line %d %s", lineNumber, ErrNameInvalidPunctPos))
+	if strings.HasPrefix(name, ".") || strings.HasPrefix(name, "-") || strings.HasPrefix(name, "'") ||
+		strings.HasSuffix(name, "-") || strings.HasSuffix(name, "'") {
+		return &ValidationError{
+			Field:   "Name",
+			Message: "cannot start or end with punctuation marks (except for dots)",
+		}
 	}
 
 	return nil
-}
-
-// hasConsecutivePunctuation checks if a string contains consecutive punctuation marks
-func hasConsecutivePunctuation(line string) bool {
-	if len(line) < 2 {
-		return false
-	}
-	for j := range line[:len(line)-1] {
-		current := line[j]
-		next := line[j+1]
-		if isPunctuation(current) && isPunctuation(next) {
-			return true
-		}
-	}
-	return false
-}
-
-// hasInvalidPunctuationPosition checks if a string starts or ends with invalid punctuation
-func hasInvalidPunctuationPosition(line string) bool {
-	punctuationStart := strings.HasPrefix(line, ".") || strings.HasPrefix(line, "-") || strings.HasPrefix(line, "'")
-	punctuationEnd := strings.HasSuffix(line, "-") || strings.HasSuffix(line, "'")
-	return punctuationStart || punctuationEnd
-}
-
-// isPunctuation checks if a character is a punctuation mark
-func isPunctuation(char byte) bool {
-	return char == '.' || char == '-' || char == '\''
 }
 
 // ValidateEmail checks if the email address is valid

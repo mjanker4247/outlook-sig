@@ -38,19 +38,8 @@ func ShowGUI() {
 	window := myApp.NewWindow("Outlook Signature Installer")
 
 	// Create form fields with validation
-	// Use multiline text area for name to support profession/title on separate lines
-	nameEntry := widget.NewMultiLineEntry()
-	nameEntry.SetPlaceHolder("Your full name\nProfession/Title (optional)")
-	nameEntry.Validator = common.ValidateName
-	nameEntry.OnChanged = func(s string) {
-		if err := nameEntry.Validate(); err != nil {
-			nameEntry.SetValidationError(err)
-		} else {
-			nameEntry.SetValidationError(nil)
-		}
-		nameEntry.Refresh()
-	}
-
+	nameEntry := createValidatedEntry("Your full name", common.ValidateName)
+	titleEntry := createValidatedEntry("Your profession or title (optional)", common.ValidateName)
 	emailEntry := createValidatedEntry("Your email address", common.ValidateEmail)
 	phoneEntry := createValidatedEntry("Your phone number", common.ValidatePhoneNumber)
 
@@ -65,6 +54,7 @@ func ShowGUI() {
 	form := &widget.Form{
 		Items: []*widget.FormItem{
 			{Text: "Name", Widget: nameEntry},
+			{Text: "Title", Widget: titleEntry},
 			{Text: "Email", Widget: emailEntry},
 			{Text: "Phone", Widget: phoneEntry},
 		},
@@ -94,7 +84,8 @@ func ShowGUI() {
 
 			// Create signature data
 			data := signature.Data{
-				Name:         common.CleanLineBreaks(nameEntry.Text),
+				Name:         nameEntry.Text,
+				Title:        titleEntry.Text,
 				Email:        emailEntry.Text,
 				PhoneDisplay: phoneDisplay,
 				PhoneLink:    phoneLink,
