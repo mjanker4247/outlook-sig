@@ -5,6 +5,7 @@ import (
 	"fmt"
 	htmltemplate "html/template"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -47,6 +48,7 @@ type Installer struct {
 	Config       *Config
 	sigDir       string // Optional override for signature directory
 	fs           afero.Fs
+	logger       *slog.Logger
 }
 
 // NewInstaller creates a new signature installer
@@ -54,7 +56,17 @@ func NewInstaller(templateBase string) *Installer {
 	return &Installer{
 		TemplateBase: templateBase,
 		fs:           afero.NewOsFs(),
+		logger:       slog.Default(),
 	}
+}
+
+// Logger returns the configured logger, defaulting to slog.Default when nil
+func (i *Installer) Logger() *slog.Logger {
+	if i.logger == nil {
+		i.logger = slog.Default()
+	}
+
+	return i.logger
 }
 
 // LoadConfig loads the configuration from the build root directory
@@ -62,6 +74,8 @@ func (i *Installer) LoadConfig() error {
 	// Get the build root directory (parent of templates directory)
 	buildRoot := filepath.Dir(i.TemplateBase)
 	configPath := filepath.Join(buildRoot, "config.yaml")
+
+	i.Logger().Info("loading configuration", slog.String("path", configPath))
 
 	configData, err := afero.ReadFile(i.fs, configPath)
 	if err != nil {
@@ -78,6 +92,7 @@ func (i *Installer) LoadConfig() error {
 	}
 
 	i.Config = &config
+	i.Logger().Info("configuration loaded", slog.String("template_name", config.TemplateName), slog.String("source", config.TemplateSource))
 	return nil
 }
 
@@ -86,6 +101,8 @@ func (i *Installer) DownloadWebTemplates() error {
 	if i.Config == nil || i.Config.WebTemplates == nil {
 		return fmt.Errorf("web templates configuration not found")
 	}
+
+	i.Logger().Info("downloading web templates", slog.String("base_url", i.Config.WebTemplates.BaseURL))
 
 	// Create templates directory if it doesn't exist
 	templatesDir := filepath.Join(i.TemplateBase, "templates")
@@ -103,11 +120,16 @@ func (i *Installer) DownloadWebTemplates() error {
 		url := i.Config.WebTemplates.BaseURL + filename
 		filepath := filepath.Join(templatesDir, filename)
 
+		i.Logger().Info("downloading template file", slog.String("filename", filename), slog.String("url", url))
+
 		if err := i.downloadFile(client, url, filepath); err != nil {
 			return fmt.Errorf("failed to download %s: %v", filename, err)
 		}
+
+		i.Logger().Info("downloaded template file", slog.String("filename", filename), slog.String("path", filepath))
 	}
 
+	i.Logger().Info("web templates download complete", slog.Int("file_count", len(i.Config.WebTemplates.TemplateFiles)))
 	return nil
 }
 
@@ -355,6 +377,8 @@ func (i *Installer) installHTMLFile(templatePath, destPath, sigName, sigDir stri
 		limit:  common.BufferSizeLimit,
 	}
 
+	i.Logger().Info("rendering HTML template", slog.String("template", templatePath))
+
 	if err := tpl.Execute(buf, data); err != nil {
 		return fmt.Errorf("failed to execute template %s: %v", templatePath, err)
 	}
@@ -369,6 +393,7 @@ func (i *Installer) installHTMLFile(templatePath, destPath, sigName, sigDir stri
 	}
 
 	fmt.Printf("Created: %s\n", destPath)
+	i.Logger().Info("HTML template rendered", slog.String("destination", destPath))
 	return nil
 }
 
@@ -384,6 +409,7 @@ func (i *Installer) installTextFile(templatePath, destPath string, data Data) er
 	}
 
 	fmt.Printf("Created: %s\n", destPath)
+	i.Logger().Info("text template rendered", slog.String("destination", destPath))
 	return nil
 }
 
@@ -398,6 +424,8 @@ func (i *Installer) copyImageAssets(sigName, sigDir string) error {
 	}
 
 	if _, err := i.fs.Stat(imageDirSrc); err == nil {
+		i.Logger().Info("copying image assets", slog.String("source", imageDirSrc), slog.String("destination", imageDirDst))
+
 		if err := i.copyDir(imageDirSrc, imageDirDst); err != nil {
 			return fmt.Errorf("failed to copy image folder: %v", err)
 		}
@@ -427,6 +455,8 @@ func (i *Installer) copyDir(src string, dst string) error {
 	if strings.Contains(src, "..") || strings.Contains(dst, "..") {
 		return fmt.Errorf("path traversal detected")
 	}
+
+	i.Logger().Info("copying directory", slog.String("source", src), slog.String("destination", dst))
 
 	return afero.Walk(i.fs, src, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
