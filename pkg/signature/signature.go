@@ -181,7 +181,7 @@ func GetOutlookSignatureDir() (string, error) {
 	}
 }
 
-// Replaces placeholders like {{ .Name }} or {{.Name}} etc.
+// Replaces placeholders like {{ .Name }} or {{.Title}} etc.
 func (i *Installer) replacePlaceholders(templateOrPath string, data Data) (string, error) {
 	var content string
 
@@ -349,7 +349,7 @@ func (i *Installer) installFile(sigName, sigDir, ext string, data Data) error {
 
 	switch ext {
 	case ".htm":
-		return i.installHTMLFile(templatePath, destPath, sigName, sigDir, data)
+		return i.installHTMLFile(templatePath, destPath, data)
 	case ".txt":
 		return i.installTextFile(templatePath, destPath, data)
 	default:
@@ -358,38 +358,27 @@ func (i *Installer) installFile(sigName, sigDir, ext string, data Data) error {
 }
 
 // installHTMLFile installs an HTML signature file
-func (i *Installer) installHTMLFile(templatePath, destPath, sigName, sigDir string, data Data) error {
-	// Create template with function map for safeHTML
-	funcMap := htmltemplate.FuncMap{
-		"safeHTML": func(s htmltemplate.HTML) htmltemplate.HTML {
-			return s
-		},
-	}
+func (i *Installer) installHTMLFile(templatePath, destPath string, data Data) error {
 
-	tpl, err := htmltemplate.New(filepath.Base(templatePath)).Funcs(funcMap).ParseFiles(templatePath)
+	tpl, err := htmltemplate.New(filepath.Base(templatePath)).ParseFiles(templatePath)
 	if err != nil {
 		return fmt.Errorf("failed to parse %s: %v", templatePath, err)
 	}
 
-	// Use LimitedBuffer to prevent memory exhaustion
-	buf := &LimitedBuffer{
-		Buffer: bytes.Buffer{},
-		limit:  common.BufferSizeLimit,
-	}
+	var buf bytes.Buffer
 
 	i.Logger().Info("rendering HTML template", slog.String("template", templatePath))
 
-	if err := tpl.Execute(buf, data); err != nil {
+	if err := tpl.Execute(&buf, data); err != nil {
 		return fmt.Errorf("failed to execute template %s: %v", templatePath, err)
+	}
+
+	if buf.Len() > common.BufferSizeLimit {
+		return fmt.Errorf("rendered template exceeds buffer size limit of %d bytes", common.BufferSizeLimit)
 	}
 
 	if err := afero.WriteFile(i.fs, destPath, buf.Bytes(), 0644); err != nil {
 		return fmt.Errorf("failed to write %s: %v", destPath, err)
-	}
-
-	// Copy image assets if they exist
-	if err := i.copyImageAssets(sigName, sigDir); err != nil {
-		return fmt.Errorf("failed to copy image assets: %v", err)
 	}
 
 	fmt.Printf("Created: %s\n", destPath)
@@ -411,96 +400,4 @@ func (i *Installer) installTextFile(templatePath, destPath string, data Data) er
 	fmt.Printf("Created: %s\n", destPath)
 	i.Logger().Info("text template rendered", slog.String("destination", destPath))
 	return nil
-}
-
-// copyImageAssets copies image assets if they exist
-func (i *Installer) copyImageAssets(sigName, sigDir string) error {
-	imageDirSrc := filepath.Join(i.TemplateBase, sigName+"_files")
-	imageDirDst := filepath.Join(sigDir, sigName+"_files")
-
-	// Security: Verify image directory paths
-	if !strings.HasPrefix(imageDirSrc, i.TemplateBase) || !strings.HasPrefix(imageDirDst, sigDir) {
-		return fmt.Errorf("Invalid image directory path")
-	}
-
-	if _, err := i.fs.Stat(imageDirSrc); err == nil {
-		i.Logger().Info("copying image assets", slog.String("source", imageDirSrc), slog.String("destination", imageDirDst))
-
-		if err := i.copyDir(imageDirSrc, imageDirDst); err != nil {
-			return fmt.Errorf("failed to copy image folder: %v", err)
-		}
-		fmt.Printf("Copied image assets to %s\n", imageDirDst)
-	}
-
-	return nil
-}
-
-// LimitedBuffer is a buffer with a size limit to prevent memory exhaustion
-type LimitedBuffer struct {
-	bytes.Buffer
-	limit int
-}
-
-func (b *LimitedBuffer) Write(p []byte) (n int, err error) {
-	if b.Buffer.Len()+len(p) > b.limit {
-		return 0, fmt.Errorf("buffer size limit exceeded")
-	}
-	return b.Buffer.Write(p)
-}
-
-func (i *Installer) copyDir(src string, dst string) error {
-	// Clean and verify paths
-	src = filepath.Clean(src)
-	dst = filepath.Clean(dst)
-	if strings.Contains(src, "..") || strings.Contains(dst, "..") {
-		return fmt.Errorf("path traversal detected")
-	}
-
-	i.Logger().Info("copying directory", slog.String("source", src), slog.String("destination", dst))
-
-	return afero.Walk(i.fs, src, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		relPath, err := filepath.Rel(src, path)
-		if err != nil {
-			return err
-		}
-
-		targetPath := filepath.Join(dst, relPath)
-		// Verify the target path is within dst directory
-		if !strings.HasPrefix(targetPath, dst) {
-			return fmt.Errorf("invalid target path: outside of destination directory")
-		}
-
-		if info.IsDir() {
-			return i.fs.MkdirAll(targetPath, 0755)
-		}
-
-		// Size limit for files
-		if info.Size() > common.FileSizeLimit {
-			return fmt.Errorf("file too large: %s", path)
-		}
-
-		srcFile, err := i.fs.Open(path)
-		if err != nil {
-			return err
-		}
-		defer srcFile.Close()
-
-		// Create file with restricted permissions
-		dstFile, err := i.fs.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-		if err != nil {
-			return err
-		}
-		defer dstFile.Close()
-
-		// Use io.CopyN to limit the amount of data copied
-		_, err = io.CopyN(dstFile, srcFile, common.FileSizeLimit)
-		if err != nil && err != io.EOF {
-			return err
-		}
-		return nil
-	})
 }

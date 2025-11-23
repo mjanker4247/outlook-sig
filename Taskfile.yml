@@ -31,6 +31,10 @@ tasks:
         platforms: [linux, darwin]
       - cmd: copy config.yaml {{.BUILD_DIR}}\\
         platforms: [windows]
+      - cmd: cp -r templates {{.BUILD_DIR}}/
+        platforms: [linux, darwin]
+      - cmd: xcopy /s /e /h /i /y templates {{.BUILD_DIR}}\\
+        platforms: [windows]
 
   # This task is to build on macOS/Linux for the Windows platform      
   cross-build-windows:
