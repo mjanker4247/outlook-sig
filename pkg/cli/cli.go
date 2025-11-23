@@ -106,12 +106,17 @@ func getUserInput(c *cli.Context) (*signature.Data, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get name: %v", err)
 	}
-	if name == "" {
-		return nil, fmt.Errorf("name cannot be empty")
+	if err := common.ValidateName(name); err != nil {
+		return nil, fmt.Errorf("invalid name: %v", err)
 	}
 	title, err := getOrPrompt(c.String("title"), "Enter your title: ")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get title: %v", err)
+	}
+	if strings.TrimSpace(title) != "" {
+		if err := common.ValidateName(title); err != nil {
+			return nil, fmt.Errorf("invalid title: %v", err)
+		}
 	}
 
 	email, err := getOrPrompt(c.String("email"), "Enter your email: ")

@@ -1,7 +1,10 @@
 package cli
 
 import (
+	"flag"
 	"testing"
+
+	"github.com/urfave/cli/v2"
 )
 
 func TestCLIHelp(t *testing.T) {
@@ -50,4 +53,66 @@ func TestGetOrPrompt(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetUserInputValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		cliName     string
+		cliTitle    string
+		expectError bool
+	}{
+		{
+			name:        "valid input passes",
+			cliName:     "Jane Doe",
+			cliTitle:    "Senior Engineer",
+			expectError: false,
+		},
+		{
+			name:        "invalid name fails",
+			cliName:     "!nvalid",
+			cliTitle:    "Engineer",
+			expectError: true,
+		},
+		{
+			name:        "invalid title fails",
+			cliName:     "Valid Name",
+			cliTitle:    "!@#",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := newTestContext(tt.cliName, tt.cliTitle, "user@example.com", "+4915123456789")
+			data, err := getUserInput(ctx)
+
+			if tt.expectError && err == nil {
+				t.Fatalf("expected error but got none")
+			}
+
+			if !tt.expectError {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+
+				if data.Name != tt.cliName {
+					t.Fatalf("expected name %q, got %q", tt.cliName, data.Name)
+				}
+
+				if data.Title != tt.cliTitle {
+					t.Fatalf("expected title %q, got %q", tt.cliTitle, data.Title)
+				}
+			}
+		})
+	}
+}
+
+func newTestContext(name, title, email, phone string) *cli.Context {
+	set := flag.NewFlagSet("test", flag.ContinueOnError)
+	set.String("name", name, "")
+	set.String("title", title, "")
+	set.String("email", email, "")
+	set.String("phone", phone, "")
+	return cli.NewContext(App(), set, nil)
 }
