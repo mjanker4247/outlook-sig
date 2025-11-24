@@ -29,11 +29,11 @@ tasks:
     cmds:
       - cmd: cp config.yaml {{.BUILD_DIR}}/
         platforms: [linux, darwin]
-      - cmd: copy config.yaml {{.BUILD_DIR}}\\
+      - cmd: xcopy config.yaml {{.BUILD_DIR}}\\
         platforms: [windows]
       - cmd: cp -r templates {{.BUILD_DIR}}/
         platforms: [linux, darwin]
-      - cmd: xcopy /s /e /h /i /y templates {{.BUILD_DIR}}\\
+      - cmd: xcopy /s /e /h /i /y templates {{.BUILD_DIR}}\\templates
         platforms: [windows]
 
   # This task is to build on macOS/Linux for the Windows platform      
