@@ -1,6 +1,3 @@
-//go:build !windows
-// +build !windows
-
 package gui
 
 import (
@@ -39,7 +36,7 @@ func ShowGUI() {
 
 	// Create form fields with validation
 	nameEntry := createValidatedEntry("Your full name", common.ValidateName)
-	titleEntry := createValidatedEntry("Your profession or title (optional)", common.ValidateName)
+	titleEntry := createValidatedEntry("Your profession or title (optional)", common.ValidateTitle)
 	emailEntry := createValidatedEntry("Your email address", common.ValidateEmail)
 	phoneEntry := createValidatedEntry("Your phone number", common.ValidatePhoneNumber)
 

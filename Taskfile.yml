@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 vars:
   APP_NAME: SignatureInstaller
@@ -8,7 +8,7 @@ vars:
   CERT_NAME: "Marco Janker (Arbeit, Code signing)"
   SRC_DIR: ./cmd/signature-installer
   BINARY: '{{.BUILD_DIR}}/{{.APP_NAME}}{{if eq OS "windows"}}.exe{{end}}'
-  WINDOWS_SIGNED: '{{.BUILD_DIR}}/{{.APP_NAME}}-signed.exe'
+  WINDOWS_SIGNED: "{{.BUILD_DIR}}/{{.APP_NAME}}-signed.exe"
 
 tasks:
   default:
@@ -29,14 +29,16 @@ tasks:
     cmds:
       - cmd: cp config.yaml {{.BUILD_DIR}}/
         platforms: [linux, darwin]
-      - cmd: xcopy config.yaml {{.BUILD_DIR}}\\
-        platforms: [windows]
       - cmd: cp -r templates {{.BUILD_DIR}}/
         platforms: [linux, darwin]
+      - cmd: xcopy /y config.yaml {{.BUILD_DIR}}
+        platforms: [windows]
+      - cmd: xcopy /y Generate-Signature.ps1 {{.BUILD_DIR}}
+        platforms: [windows]
       - cmd: xcopy /s /e /h /i /y templates {{.BUILD_DIR}}\\templates
         platforms: [windows]
 
-  # This task is to build on macOS/Linux for the Windows platform      
+  # This task is to build on macOS/Linux for the Windows platform
   cross-build-windows:
     desc: Cross-compile for Windows (from macOS/Linux)
     platforms: [darwin, linux]
@@ -54,7 +56,7 @@ tasks:
       - GOOS=windows GOARCH=amd64 go build -tags "!windows" -o {{.BUILD_DIR}}/{{.APP_NAME}}-cli.exe {{.SRC_DIR}}
       - task: copy-config
 
-  # This task is to build on Windows for the Windows platform      
+  # This task is to build on Windows for the Windows platform
   build-windows:
     desc: Build for Windows (on Windows)
     platforms: [windows]
@@ -141,4 +143,4 @@ tasks:
     cmds:
       - task: fmt
       - task: lint
-      - task: test 
+      - task: test

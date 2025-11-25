@@ -1,7 +1,3 @@
 template_name: "Standard"
-template_source: "local"  # "local" or "web"
-web_templates:
-  base_url: "https://team.emea.tuv.group/sites/002458/TRLP%20KM%20Dokumente/Outlook%20Signatur/"
-  template_files:
-    - "Standard.htm"
-    - "Standard.txt"
+template_source: "web" # "local" or "web"
+base_url: "http://de-tlp-n-emv23/templates/"

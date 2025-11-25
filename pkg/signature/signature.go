@@ -20,20 +20,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// WebTemplateConfig represents web template configuration
-type WebTemplateConfig struct {
-	BaseURL       string   `yaml:"base_url"`
-	TemplateFiles []string `yaml:"template_files"`
-}
-
-// Config represents the application configuration
+// Config represents the application configuration.
 type Config struct {
-	TemplateName   string             `yaml:"template_name"`
-	TemplateSource string             `yaml:"template_source"`
-	WebTemplates   *WebTemplateConfig `yaml:"web_templates,omitempty"`
+	TemplateName   string `yaml:"template_name"`
+	TemplateSource string `yaml:"template_source"` // e.g. "local" or "web"
+	BaseURL        string `yaml:"base_url"`        // used when TemplateSource == "web"
 }
 
-// Data represents the signature data structure
+// Data represents the signature data structure.
 type Data struct {
 	Name         string
 	Title        string
@@ -42,16 +36,16 @@ type Data struct {
 	PhoneLink    string
 }
 
-// Installer handles signature installation
+// Installer handles signature installation.
 type Installer struct {
-	TemplateBase string
-	Config       *Config
-	sigDir       string // Optional override for signature directory
-	fs           afero.Fs
+	TemplateBase string   // path to templates directory
+	Config       *Config  // loaded configuration
+	sigDir       string   // optional override for signature directory
+	fs           afero.Fs // filesystem abstraction
 	logger       *slog.Logger
 }
 
-// NewInstaller creates a new signature installer
+// NewInstaller creates a new signature installer.
 func NewInstaller(templateBase string) *Installer {
 	return &Installer{
 		TemplateBase: templateBase,
@@ -60,18 +54,17 @@ func NewInstaller(templateBase string) *Installer {
 	}
 }
 
-// Logger returns the configured logger, defaulting to slog.Default when nil
+// Logger returns the configured logger, defaulting to slog.Default when nil.
 func (i *Installer) Logger() *slog.Logger {
 	if i.logger == nil {
 		i.logger = slog.Default()
 	}
-
 	return i.logger
 }
 
-// LoadConfig loads the configuration from the build root directory
+// LoadConfig loads the configuration from the build root directory.
 func (i *Installer) LoadConfig() error {
-	// Get the build root directory (parent of templates directory)
+	// buildRoot = parent of templates directory
 	buildRoot := filepath.Dir(i.TemplateBase)
 	configPath := filepath.Join(buildRoot, "config.yaml")
 
@@ -92,49 +85,79 @@ func (i *Installer) LoadConfig() error {
 	}
 
 	i.Config = &config
-	i.Logger().Info("configuration loaded", slog.String("template_name", config.TemplateName), slog.String("source", config.TemplateSource))
+	i.Logger().Info(
+		"configuration loaded",
+		slog.String("template_name", config.TemplateName),
+		slog.String("source", config.TemplateSource),
+		slog.String("base_url", config.BaseURL),
+	)
 	return nil
 }
 
-// DownloadWebTemplates downloads templates from the configured web server
+// DownloadWebTemplates downloads templates from the configured web server.
+// It derives template file names from TemplateName (e.g. <name>.htm, <name>.txt).
 func (i *Installer) DownloadWebTemplates() error {
-	if i.Config == nil || i.Config.WebTemplates == nil {
-		return fmt.Errorf("web templates configuration not found")
+	if i.Config == nil {
+		return fmt.Errorf("configuration not loaded")
+	}
+	if i.Config.TemplateSource != "web" {
+		return fmt.Errorf("template_source is %q, expected \"web\"", i.Config.TemplateSource)
+	}
+	if i.Config.BaseURL == "" {
+		return fmt.Errorf("base_url must be set in config for web templates")
 	}
 
-	i.Logger().Info("downloading web templates", slog.String("base_url", i.Config.WebTemplates.BaseURL))
+	templateName := i.Config.TemplateName
+	if templateName == "" {
+		return fmt.Errorf("template_name must be set to download web templates")
+	}
 
-	// Create templates directory if it doesn't exist
-	templatesDir := filepath.Join(i.TemplateBase, "templates")
-	if err := i.fs.MkdirAll(templatesDir, 0755); err != nil {
+	i.Logger().Info("downloading web templates", slog.String("base_url", i.Config.BaseURL))
+
+	// TemplateBase is the templates directory itself.
+	templatesDir := i.TemplateBase
+	if err := i.fs.MkdirAll(templatesDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create templates directory: %v", err)
 	}
 
-	// Create HTTP client with timeout
+	extensions := []string{".htm", ".txt"}
+	var filenames []string
+	for _, ext := range extensions {
+		filenames = append(filenames, templateName+ext)
+	}
+
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
 
-	// Download each template file
-	for _, filename := range i.Config.WebTemplates.TemplateFiles {
-		url := i.Config.WebTemplates.BaseURL + filename
-		filepath := filepath.Join(templatesDir, filename)
+	for _, filename := range filenames {
+		url := i.Config.BaseURL + filename
+		targetPath := filepath.Join(templatesDir, filename)
 
-		i.Logger().Info("downloading template file", slog.String("filename", filename), slog.String("url", url))
+		i.Logger().Info(
+			"downloading template file",
+			slog.String("filename", filename),
+			slog.String("url", url),
+			slog.String("target", targetPath),
+		)
 
-		if err := i.downloadFile(client, url, filepath); err != nil {
+		if err := i.downloadFile(client, url, targetPath); err != nil {
 			return fmt.Errorf("failed to download %s: %v", filename, err)
 		}
 
-		i.Logger().Info("downloaded template file", slog.String("filename", filename), slog.String("path", filepath))
+		i.Logger().Info(
+			"downloaded template file",
+			slog.String("filename", filename),
+			slog.String("path", targetPath),
+		)
 	}
 
-	i.Logger().Info("web templates download complete", slog.Int("file_count", len(i.Config.WebTemplates.TemplateFiles)))
+	i.Logger().Info("web templates download complete", slog.Int("file_count", len(filenames)))
 	return nil
 }
 
-// downloadFile downloads a single file from a URL
-func (i *Installer) downloadFile(client *http.Client, url, filepath string) error {
+// downloadFile downloads a single file from a URL into the fs.
+func (i *Installer) downloadFile(client *http.Client, url, path string) error {
 	resp, err := client.Get(url)
 	if err != nil {
 		return fmt.Errorf("failed to get %s: %v", url, err)
@@ -145,23 +168,20 @@ func (i *Installer) downloadFile(client *http.Client, url, filepath string) erro
 		return fmt.Errorf("failed to get %s: status %d", url, resp.StatusCode)
 	}
 
-	// Create the file
-	file, err := i.fs.Create(filepath)
+	file, err := i.fs.Create(path)
 	if err != nil {
-		return fmt.Errorf("failed to create file %s: %v", filepath, err)
+		return fmt.Errorf("failed to create file %s: %v", path, err)
 	}
 	defer file.Close()
 
-	// Copy the response body to the file
-	_, err = io.Copy(file, resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to write to file %s: %v", filepath, err)
+	if _, err = io.Copy(file, resp.Body); err != nil {
+		return fmt.Errorf("failed to write to file %s: %v", path, err)
 	}
 
 	return nil
 }
 
-// GetOutlookSignatureDir returns the path to the Outlook signatures directory
+// GetOutlookSignatureDir returns the path to the Outlook signatures directory.
 func GetOutlookSignatureDir() (string, error) {
 	switch runtime.GOOS {
 	case "windows":
@@ -175,19 +195,27 @@ func GetOutlookSignatureDir() (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to get user home directory: %v", err)
 		}
-		return filepath.Join(homeDir, "Library", "Group Containers", "UBF8T346G9.Office", "Outlook", "Outlook 15 Profiles", "Main Profile", "Signatures"), nil
+		return filepath.Join(
+			homeDir,
+			"Library",
+			"Group Containers",
+			"UBF8T346G9.Office",
+			"Outlook",
+			"Outlook 15 Profiles",
+			"Main Profile",
+			"Signatures",
+		), nil
 	default:
 		return "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}
 }
 
-// Replaces placeholders like {{ .Name }} or {{.Title}} etc.
+// replacePlaceholders replaces placeholders like {{ .Name }} in a template.
 func (i *Installer) replacePlaceholders(templateOrPath string, data Data) (string, error) {
 	var content string
 
-	// Check if the input is a file
+	// If it's a file path that exists, read it; otherwise treat as raw template string.
 	if _, err := i.fs.Stat(templateOrPath); err == nil {
-		// Read the template file
 		templateContent, err := afero.ReadFile(i.fs, templateOrPath)
 		if err != nil {
 			return "", fmt.Errorf("failed to read template file %s: %v", templateOrPath, err)
@@ -197,8 +225,6 @@ func (i *Installer) replacePlaceholders(templateOrPath string, data Data) (strin
 		content = templateOrPath
 	}
 
-	// Use cleaned data directly - line cleaning is handled in ToHTMLData for HTML files
-	// and consistently applied across all input processing
 	values := map[string]string{
 		"Name":         data.Name,
 		"Title":        data.Title,
@@ -214,7 +240,7 @@ func (i *Installer) replacePlaceholders(templateOrPath string, data Data) (strin
 	return content, nil
 }
 
-// Install installs a signature with the given data
+// Install installs a signature with the given data.
 func (i *Installer) Install(data Data) error {
 	if err := i.validateTemplateBase(); err != nil {
 		return err
@@ -241,15 +267,15 @@ func (i *Installer) Install(data Data) error {
 	return i.installSignatureFiles(sigName, sigDir, data)
 }
 
-// validateTemplateBase checks if the template base directory exists
+// validateTemplateBase checks if the template base directory exists.
 func (i *Installer) validateTemplateBase() error {
 	if _, err := i.fs.Stat(i.TemplateBase); os.IsNotExist(err) {
-		return fmt.Errorf("Templates directory not found at %s", i.TemplateBase)
+		return fmt.Errorf("templates directory not found at %s", i.TemplateBase)
 	}
 	return nil
 }
 
-// ensureConfigLoaded loads configuration if not already loaded
+// ensureConfigLoaded loads configuration if not already loaded.
 func (i *Installer) ensureConfigLoaded() error {
 	if i.Config == nil {
 		if err := i.LoadConfig(); err != nil {
@@ -259,9 +285,12 @@ func (i *Installer) ensureConfigLoaded() error {
 	return nil
 }
 
-// handleWebTemplates downloads web templates if needed
+// handleWebTemplates downloads web templates if needed.
 func (i *Installer) handleWebTemplates() error {
 	if i.Config.TemplateSource == "web" {
+		if i.Config.BaseURL == "" {
+			return fmt.Errorf("base_url must be set when template_source is \"web\"")
+		}
 		if err := i.DownloadWebTemplates(); err != nil {
 			return fmt.Errorf("failed to download web templates: %v", err)
 		}
@@ -269,27 +298,26 @@ func (i *Installer) handleWebTemplates() error {
 	return nil
 }
 
-// validateAndSanitizeTemplateName validates and sanitizes the template name
+// validateAndSanitizeTemplateName validates and sanitizes the template name.
 func (i *Installer) validateAndSanitizeTemplateName() (string, error) {
 	sigName := i.Config.TemplateName
 	if sigName == "" {
-		return "", fmt.Errorf("Template name cannot be empty")
+		return "", fmt.Errorf("template name cannot be empty")
 	}
 
 	if strings.ContainsAny(sigName, `/\:*?"<>|`) {
-		return "", fmt.Errorf("Invalid template name: contains invalid characters")
+		return "", fmt.Errorf("invalid template name: contains invalid characters")
 	}
 
-	// Additional security: Clean the path and check for traversal attempts
 	cleanSigName := filepath.Clean(sigName)
 	if cleanSigName != sigName || strings.Contains(cleanSigName, "..") {
-		return "", fmt.Errorf("Invalid template name: potential path traversal detected")
+		return "", fmt.Errorf("invalid template name: potential path traversal detected")
 	}
 
 	return cleanSigName, nil
 }
 
-// getSignatureDirectory returns the signature directory path
+// getSignatureDirectory returns the signature directory path.
 func (i *Installer) getSignatureDirectory() (string, error) {
 	if i.sigDir != "" {
 		return i.sigDir, nil
@@ -300,51 +328,51 @@ func (i *Installer) getSignatureDirectory() (string, error) {
 		return "", fmt.Errorf("failed to get signature directory: %v", err)
 	}
 
-	// Create the signature directory if it doesn't exist
-	if err := i.fs.MkdirAll(sigDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create signature directory: %v", err)
+	if err := i.fs.MkdirAll(sigDir, 0o755); err != nil {
+		return "",fmt.Errorf("failed to create signature directory: %v", err)
 	}
 
 	return sigDir, nil
 }
 
-// installSignatureFiles installs the signature files with the given data
+// installSignatureFiles installs the signature files with the given data.
 func (i *Installer) installSignatureFiles(sigName, sigDir string, data Data) error {
 	fmt.Println("Installing signature to:", sigDir)
+
 	extensions := []string{".htm", ".txt"}
-	var errors []error
+	var errs []error
 
 	for _, ext := range extensions {
 		if err := i.installFile(sigName, sigDir, ext, data); err != nil {
-			errors = append(errors, err)
+			errs = append(errs, err)
 		}
 	}
 
-	if len(errors) > 0 {
-		return fmt.Errorf("Encountered %d errors during installation: %v", len(errors), errors)
+	if len(errs) > 0 {
+		return fmt.Errorf("encountered %d errors during installation: %v", len(errs), errs)
 	}
 
 	return nil
 }
 
-// installFile installs a single signature file
+// installFile installs a single signature file.
 func (i *Installer) installFile(sigName, sigDir, ext string, data Data) error {
 	templatePath := filepath.Join(i.TemplateBase, sigName+ext)
 
-	// Security: Verify the resolved path is within TemplateBase
+	// Security: ensure templatePath stays within TemplateBase.
 	if !strings.HasPrefix(templatePath, i.TemplateBase) {
-		return fmt.Errorf("Invalid template path: outside of template directory")
+		return fmt.Errorf("invalid template path: outside of template directory")
 	}
 
 	destPath := filepath.Join(sigDir, sigName+ext)
 
-	// Security: Verify the resolved path is within sigDir
+	// Security: ensure destPath stays within sigDir.
 	if !strings.HasPrefix(destPath, sigDir) {
-		return fmt.Errorf("Invalid destination path: outside of signature directory")
+		return fmt.Errorf("invalid destination path: outside of signature directory")
 	}
 
 	if _, err := i.fs.Stat(templatePath); os.IsNotExist(err) {
-		return fmt.Errorf("Template file not found: %s", templatePath)
+		return fmt.Errorf("template file not found: %s", templatePath)
 	}
 
 	switch ext {
@@ -353,13 +381,12 @@ func (i *Installer) installFile(sigName, sigDir, ext string, data Data) error {
 	case ".txt":
 		return i.installTextFile(templatePath, destPath, data)
 	default:
-		return fmt.Errorf("Unsupported file extension: %s", ext)
+		return fmt.Errorf("unsupported file extension: %s", ext)
 	}
 }
 
-// installHTMLFile installs an HTML signature file
+// installHTMLFile installs an HTML signature file.
 func (i *Installer) installHTMLFile(templatePath, destPath string, data Data) error {
-
 	tpl, err := htmltemplate.New(filepath.Base(templatePath)).ParseFiles(templatePath)
 	if err != nil {
 		return fmt.Errorf("failed to parse %s: %v", templatePath, err)
@@ -377,7 +404,7 @@ func (i *Installer) installHTMLFile(templatePath, destPath string, data Data) er
 		return fmt.Errorf("rendered template exceeds buffer size limit of %d bytes", common.BufferSizeLimit)
 	}
 
-	if err := afero.WriteFile(i.fs, destPath, buf.Bytes(), 0644); err != nil {
+	if err := afero.WriteFile(i.fs, destPath, buf.Bytes(), 0o644); err != nil {
 		return fmt.Errorf("failed to write %s: %v", destPath, err)
 	}
 
@@ -386,14 +413,14 @@ func (i *Installer) installHTMLFile(templatePath, destPath string, data Data) er
 	return nil
 }
 
-// installTextFile installs a text signature file
+// installTextFile installs a text signature file.
 func (i *Installer) installTextFile(templatePath, destPath string, data Data) error {
 	result, err := i.replacePlaceholders(templatePath, data)
 	if err != nil {
 		return err
 	}
 
-	if err := afero.WriteFile(i.fs, destPath, []byte(result), 0644); err != nil {
+	if err := afero.WriteFile(i.fs, destPath, []byte(result), 0o644); err != nil {
 		return fmt.Errorf("failed to write file %s: %v", destPath, err)
 	}
 

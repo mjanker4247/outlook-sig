@@ -1,3 +1,4 @@
+// file: pkg/cli/cli.go
 package cli
 
 import (
@@ -21,7 +22,8 @@ func App() *cli.App {
 		Description: `This tool installs Microsoft Outlook signatures from templates.
 Templates may include these placeholders
 
-{{ .Name }} (supports multiline: name, profession, title)
+{{ .Name }}
+{{ .Title }}
 {{ .Email }}
 {{ .PhoneLink }}
 {{ .PhoneDisplay }}
@@ -43,7 +45,7 @@ The template to use is configured in the config.yaml file.`,
 			&cli.StringFlag{
 				Name:    "title",
 				Aliases: []string{"t"},
-				Usage:   "Your profession or title",
+				Usage:   "Your profession or title (optional)",
 			},
 			&cli.StringFlag{
 				Name:    "email",
@@ -64,15 +66,6 @@ The template to use is configured in the config.yaml file.`,
 		Action: func(c *cli.Context) error {
 			// Check if GUI mode is requested or no arguments are provided
 			if c.Bool("gui") || len(os.Args) == 1 {
-				// Check if we're cross-compiling (GOOS will be set to windows)
-				if os.Getenv("GOOS") == "windows" {
-					fmt.Println("GUI mode is not available during cross-compilation.")
-					fmt.Println("Please use CLI mode with appropriate flags:")
-					fmt.Println("  SignatureInstaller.exe --name \"Your Name\" --title \"Your Title\" --email \"your.email@example.com\" --phone \"+49 123 456789\"")
-					fmt.Println("")
-					fmt.Println("Or build on Windows to enable GUI mode.")
-					return nil
-				}
 				gui.ShowGUI()
 				return nil
 			}
@@ -109,12 +102,13 @@ func getUserInput(c *cli.Context) (*signature.Data, error) {
 	if err := common.ValidateName(name); err != nil {
 		return nil, fmt.Errorf("invalid name: %v", err)
 	}
-	title, err := getOrPrompt(c.String("title"), "Enter your title: ")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get title: %v", err)
-	}
-	if strings.TrimSpace(title) != "" {
-		if err := common.ValidateName(title); err != nil {
+
+	// Title is optional:
+	// - do NOT prompt if omitted on CLI
+	// - do NOT complain if empty
+	title := strings.TrimSpace(c.String("title"))
+	if title != "" {
+		if err := common.ValidateTitle(title); err != nil {
 			return nil, fmt.Errorf("invalid title: %v", err)
 		}
 	}
@@ -144,7 +138,7 @@ func getUserInput(c *cli.Context) (*signature.Data, error) {
 
 	return &signature.Data{
 		Name:         name,
-		Title:        title,
+		Title:        title, // may be empty string, that's fine
 		Email:        email,
 		PhoneDisplay: phoneDisplay,
 		PhoneLink:    phoneLink,

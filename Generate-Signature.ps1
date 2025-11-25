@@ -1,8 +1,21 @@
 # Check if ActiveDirectory module is available
-if (-not (Get-Module -ListAvailable -Name ActiveDirectory)) {
+if (-not (Get-Module -ListAvailable -Name ActiveDirectory))
+{
     Write-Host "ERROR: Active Directory module for PowerShell is not installed." -ForegroundColor Red
     Write-Host "Please install 'RSAT: Active Directory module for Windows PowerShell'." -ForegroundColor Yellow
     exit 1
+}
+
+# Resolve folder where this script is stored
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$installerPath = Join-Path $scriptDir "SignatureInstaller.exe"
+
+# Check if SignatureInstaller.exe exists in the script folder
+if (-not (Test-Path $installerPath))
+{
+    Write-Host "ERROR: SignatureInstaller.exe not found in script directory: $scriptDir" -ForegroundColor Red
+    Write-Host "Please place SignatureInstaller.exe in the same folder as this script." -ForegroundColor Yellow
+    exit 2
 }
 
 # Import the module
@@ -12,10 +25,13 @@ Import-Module ActiveDirectory
 $currentUser = [Environment]::UserName
 
 # Query Active Directory
-try {
+try
+{
     Write-Host "Querying Active Directory for user '$currentUser'..." -ForegroundColor Gray
     $adUser = Get-ADUser -Identity $currentUser -Properties DisplayName, Mail, telephoneNumber
-} catch {
+}
+catch
+{
     Write-Host "ERROR: Could not find user '$currentUser' in Active Directory." -ForegroundColor Red
     Write-Host "Details: $_" -ForegroundColor Yellow
     exit 2
@@ -32,29 +48,11 @@ if ([string]::IsNullOrEmpty($displayName)) { $missingFields += "DisplayName" }
 if ([string]::IsNullOrEmpty($email)) { $missingFields += "Mail" }
 if ([string]::IsNullOrEmpty($telephoneNumber)) { $missingFields += "telephoneNumber" }
 
-if ($missingFields.Count -gt 0) {
+if ($missingFields.Count -gt 0)
+{
     Write-Host "ERROR: Required attributes are missing: $($missingFields -join ', ')" -ForegroundColor Red
     Write-Host "All fields (DisplayName, Mail, telephoneNumber) are required for signature generation." -ForegroundColor Yellow
     exit 3
-}
-
-# Format phone number for better compatibility with Go validation
-if (-not [string]::IsNullOrEmpty($telephoneNumber)) {
-    # Remove common separators and ensure proper format
-    $telephoneNumber = $telephoneNumber -replace '[\s\-\(\)\.]', ''
-    
-    # Add country code if missing (assuming German numbers)
-    if (-not $telephoneNumber.StartsWith("+")) {
-        if ($telephoneNumber.StartsWith("0")) {
-            # Replace leading 0 with +49 for German numbers
-            $telephoneNumber = "+49" + $telephoneNumber.Substring(1)
-        } else {
-            # Add +49 prefix for numbers without country code
-            $telephoneNumber = "+49" + $telephoneNumber
-        }
-    }
-    
-    Write-Host "Formatted phone number: $telephoneNumber" -ForegroundColor Gray
 }
 
 # Output user information
@@ -63,21 +61,48 @@ Write-Host "DisplayName: $displayName" -ForegroundColor White
 Write-Host "Email: $email" -ForegroundColor White
 Write-Host "Phone: $telephoneNumber" -ForegroundColor White
 
-# Check if SignatureInstaller exists
-if (-not (Test-Path ".\SignatureInstaller.exe")) {
-    Write-Host "ERROR: SignatureInstaller.exe not found in current directory." -ForegroundColor Red
-    exit 4
+# Format phone number for better compatibility with Go validation
+if (-not [string]::IsNullOrEmpty($telephoneNumber))
+{
+    # Remove common separators and ensure proper format
+    $telephoneNumber = $telephoneNumber -replace '[\s\-\(\)\.]', ''
+    
+    # Add country code if missing (assuming German numbers)
+    if (-not $telephoneNumber.StartsWith("+"))
+    {
+        if ($telephoneNumber.StartsWith("0"))
+        {
+            # Replace leading 0 with +49 for German numbers
+            $telephoneNumber = "+49" + $telephoneNumber.Substring(1)
+        }
+        else
+        {
+            # Add +49 prefix for numbers without country code
+            $telephoneNumber = "+49" + $telephoneNumber
+        }
+    }
+    
+    Write-Host "Formatted phone number: $telephoneNumber" -ForegroundColor Gray
 }
 
 # Call SignatureInstaller with all required parameters
 Write-Host "`nGenerating signature..." -ForegroundColor Cyan
-try {
+try
+{
     # Call with all required parameters (name, email, phone)
-    & .\SignatureInstaller.exe -name "$displayName" -email "$email" -phone "$telephoneNumber"
+    Start-Process $installerPath -ArgumentList @(
+        "--name", $displayName,
+        "--email", $email,
+        "--phone", $telephoneNumber
+    )
+    -Wait -NoNewWindow
     
-    if ($LASTEXITCODE -eq 0) {
+    if ($LASTEXITCODE -eq 0)
+    {
         Write-Host "Signature generated successfully!" -ForegroundColor Green
-    } else {
+    }
+    else
+    {
         Write-Host "ERROR: SignatureInstaller failed with exit code $LASTEXITCODE" -ForegroundColor Red
         Write-Host "This might be due to validation issues. Please check:" -ForegroundColor Yellow
         Write-Host "- Name format (letters, spaces, dots, hyphens, apostrophes only)" -ForegroundColor Yellow
@@ -86,7 +111,9 @@ try {
         Write-Host "For phone numbers, ensure they include country code (e.g., +49 for Germany)" -ForegroundColor Yellow
         exit 5
     }
-} catch {
+}
+catch
+{
     Write-Host "ERROR: Failed to run SignatureInstaller." -ForegroundColor Red
     Write-Host "Details: $_" -ForegroundColor Yellow
     exit 6

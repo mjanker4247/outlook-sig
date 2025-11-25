@@ -188,3 +188,10 @@ func ValidateSignatureName(name string) error {
 	}
 	return nil
 }
+
+// ValidateTitle checks if the title is valid
+func ValidateTitle(name string) error {
+	// Title is optional; if empty, it's valid
+	// TODO: Do some validation if needed		
+	return nil
+}

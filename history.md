@@ -5,13 +5,6 @@
 **Summary**: Resolved cross-compilation issues from macOS to Windows and cleaned up VSCode task configuration for better development workflow.
 
 **Changes**:
-- **Cross-Compilation Fix**: 
-  - Implemented build tag system to conditionally compile GUI components only for current platform
-  - Added `//go:build !windows` constraint to `pkg/gui/gui.go` to exclude GUI when targeting Windows
-  - Created `pkg/gui/gui_windows.go` with stub implementation for Windows builds
-  - Modified CLI package to detect cross-compilation and provide helpful CLI usage instructions
-  - Updated Taskfile.yml to use proper build tags (`-tags "!windows"`) for cross-compilation
-
 - **VSCode Task Cleanup**:
   - Removed unused and non-functional tasks (Run, Sign Windows)
   - Consolidated duplicate problemMatcher configurations
