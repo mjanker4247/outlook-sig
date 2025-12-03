@@ -90,13 +90,13 @@ Write-Host "`nGenerating signature..." -ForegroundColor Cyan
 try
 {
     # Call with all required parameters (name, email, phone)
-    Start-Process $installerPath -ArgumentList @(
-        "--name", $displayName,
-        "--email", $email,
-        "--phone", $telephoneNumber
-    )
-    -Wait -NoNewWindow
-    
+    # Start-Process $installerPath -ArgumentList @(
+    #     "--name", $displayName,
+    #     "--email", $email,
+    #     "--phone", $telephoneNumber
+    # )
+    & $installerPath --name $displayName --email $email --phone $telephoneNumber
+
     if ($LASTEXITCODE -eq 0)
     {
         Write-Host "Signature generated successfully!" -ForegroundColor Green
