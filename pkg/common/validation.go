@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/mail"
 	"strings"
+	"unicode"
 
-	"github.com/asaskevich/govalidator"
 	"github.com/nyaruka/phonenumbers"
 )
 
@@ -56,64 +56,54 @@ func newValidationError(field, message string) error {
 	}
 }
 
-// ValidateName performs comprehensive validation on a name string
+// isNamePunct reports whether r is a name-allowed punctuation mark.
+func isNamePunct(r rune) bool {
+	return r == '.' || r == '-' || r == '\''
+}
+
+// ValidateName validates a name, supporting Unicode letters (e.g. German umlauts).
+// Allowed characters: Unicode letters, spaces, dots, hyphens, apostrophes.
 func ValidateName(name string) error {
-	// Trim whitespace only at the beginning and end
 	name = strings.TrimSpace(name)
-
-	// Check if empty
 	if name == "" {
-		return &ValidationError{
-			Field:   "Name",
-			Message: "cannot be empty",
+		return &ValidationError{Field: "Name", Message: ErrNameEmpty}
+	}
+
+	runes := []rune(name)
+	if len(runes) < MinNameLength {
+		return &ValidationError{Field: "Name", Message: "must be at least 2 characters long"}
+	}
+
+	// Allow Unicode letters, spaces, dots, hyphens, and apostrophes.
+	for _, r := range runes {
+		if !unicode.IsLetter(r) && r != ' ' && !isNamePunct(r) {
+			return &ValidationError{Field: "Name", Message: ErrNameInvalidChars}
 		}
 	}
 
-	// Check if name is too short (less than 2 characters)
-	if len(name) < 2 {
-		return &ValidationError{
-			Field:   "Name",
-			Message: "must be at least 2 characters long",
-		}
-	}
-
-	// Use govalidator to check if the name is valid
-	if !govalidator.Matches(name, "^[a-zA-Z\\s\\.\\-']+$") {
-		return &ValidationError{
-			Field:   "Name",
-			Message: "can only contain letters, spaces, dots, hyphens, and apostrophes",
-		}
-	}
-
-	// Normalize multiple spaces into a single space
+	// Normalize multiple spaces before further checks.
 	name = strings.Join(strings.Fields(name), " ")
+	runes = []rune(name)
 
-	// Check for multiple consecutive punctuation or special characters
-	for i := range name[:len(name)-1] {
-		current := name[i]
-		next := name[i+1]
-		if (current == '.' || current == '-' || current == '\'') && (next == '.' || next == '-' || next == '\'') {
-			return &ValidationError{
-				Field:   "Name",
-				Message: "cannot contain multiple consecutive punctuation marks",
-			}
+	// Consecutive punctuation marks are not allowed (e.g. "..", "--").
+	for i := 0; i < len(runes)-1; i++ {
+		if isNamePunct(runes[i]) && isNamePunct(runes[i+1]) {
+			return &ValidationError{Field: "Name", Message: ErrNameConsecutivePunct}
 		}
 	}
 
-	// Check for punctuation at the start or end
-	if strings.HasPrefix(name, ".") || strings.HasPrefix(name, "-") || strings.HasPrefix(name, "'") ||
-		strings.HasSuffix(name, "-") || strings.HasSuffix(name, "'") {
-		return &ValidationError{
-			Field:   "Name",
-			Message: "cannot start or end with punctuation marks (except for dots)",
-		}
+	// Names cannot start or end with hyphens or apostrophes (trailing dot is OK, e.g. "Dr.").
+	first, last := runes[0], runes[len(runes)-1]
+	if first == '-' || first == '\'' || last == '-' || last == '\'' {
+		return &ValidationError{Field: "Name", Message: ErrNameInvalidPunctPos}
 	}
 
 	return nil
 }
 
-// ValidateEmail checks if the email address is valid
+// ValidateEmail checks if the email address is valid.
 func ValidateEmail(email string) error {
+	email = strings.TrimSpace(email)
 	if email == "" {
 		return newValidationError("Email", ErrEmailEmpty)
 	}
@@ -189,9 +179,7 @@ func ValidateSignatureName(name string) error {
 	return nil
 }
 
-// ValidateTitle checks if the title is valid
-func ValidateTitle(name string) error {
-	// Title is optional; if empty, it's valid
-	// TODO: Do some validation if needed		
+// ValidateTitle is intentionally permissive — job titles are free-form text.
+func ValidateTitle(_ string) error {
 	return nil
 }

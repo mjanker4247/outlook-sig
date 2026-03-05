@@ -329,7 +329,7 @@ func (i *Installer) getSignatureDirectory() (string, error) {
 	}
 
 	if err := i.fs.MkdirAll(sigDir, 0o755); err != nil {
-		return "",fmt.Errorf("failed to create signature directory: %v", err)
+		return "", fmt.Errorf("failed to create signature directory: %v", err)
 	}
 
 	return sigDir, nil
@@ -359,15 +359,16 @@ func (i *Installer) installSignatureFiles(sigName, sigDir string, data Data) err
 func (i *Installer) installFile(sigName, sigDir, ext string, data Data) error {
 	templatePath := filepath.Join(i.TemplateBase, sigName+ext)
 
-	// Security: ensure templatePath stays within TemplateBase.
-	if !strings.HasPrefix(templatePath, i.TemplateBase) {
+	// Security: ensure templatePath is contained within TemplateBase.
+	// Use filepath.Rel to avoid prefix-collision bugs (e.g. /templates-evil vs /templates).
+	if rel, err := filepath.Rel(i.TemplateBase, templatePath); err != nil || strings.HasPrefix(rel, "..") {
 		return fmt.Errorf("invalid template path: outside of template directory")
 	}
 
 	destPath := filepath.Join(sigDir, sigName+ext)
 
-	// Security: ensure destPath stays within sigDir.
-	if !strings.HasPrefix(destPath, sigDir) {
+	// Security: ensure destPath is contained within sigDir.
+	if rel, err := filepath.Rel(sigDir, destPath); err != nil || strings.HasPrefix(rel, "..") {
 		return fmt.Errorf("invalid destination path: outside of signature directory")
 	}
 

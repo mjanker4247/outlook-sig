@@ -169,7 +169,7 @@ func createInstaller(c *cli.Context) (*signature.Installer, error) {
 
 func getOrPrompt(value, prompt string) (string, error) {
 	if strings.TrimSpace(value) != "" {
-		return value, nil
+		return strings.TrimSpace(value), nil
 	}
 	fmt.Print(prompt)
 	reader := bufio.NewReader(os.Stdin)

@@ -48,8 +48,9 @@ func TestDownloadWebTemplates_UsesTemplateNameForFilenames(t *testing.T) {
 		}
 	}
 
+	// TemplateBase is the templates directory itself; files are written directly into it.
 	for _, name := range wantNames {
-		p := filepath.Join(inst.TemplateBase, "templates", name)
+		p := filepath.Join(inst.TemplateBase, name)
 		if _, err := fs.Stat(p); err != nil {
 			t.Errorf("expected file %q to be created, but stat failed: %v", p, err)
 		}

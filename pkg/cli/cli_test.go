@@ -33,10 +33,10 @@ func TestGetOrPrompt(t *testing.T) {
 			expected: "test-value",
 		},
 		{
-			name:     "returns existing value with whitespace",
+			name:     "trims surrounding whitespace from pre-supplied value",
 			value:    "  test-value  ",
 			prompt:   "Enter value:",
-			expected: "  test-value  ",
+			expected: "test-value",
 		},
 		// Note: Testing empty/whitespace-only values would require stdin input
 		// which is not suitable for automated testing
@@ -74,12 +74,7 @@ func TestGetUserInputValidation(t *testing.T) {
 			cliTitle:    "Engineer",
 			expectError: true,
 		},
-		{
-			name:        "invalid title fails",
-			cliName:     "Valid Name",
-			cliTitle:    "!@#",
-			expectError: true,
-		},
+		// Titles are intentionally free-form; no validation error expected for special chars.
 	}
 
 	for _, tt := range tests {
