@@ -2,30 +2,208 @@ version: "3"
 
 vars:
   APP_NAME: SignatureInstaller
+  APP_ID: com.janker.signatureinstaller   # Reverse-domain ID used by fyne-cross
   BUILD_DIR: build
-  TEMPLATES_DIR: templates
-  # Prerequisite: Install code signing certificate in Windows certificate store
-  CERT_NAME: "Marco Janker (Arbeit, Code signing)"
   SRC_DIR: ./cmd/signature-installer
+  FYNE_CROSS_BIN: fyne-cross/bin
+
+  # Current-platform binary (adds .exe on Windows)
   BINARY: '{{.BUILD_DIR}}/{{.APP_NAME}}{{if eq OS "windows"}}.exe{{end}}'
-  WINDOWS_SIGNED: "{{.BUILD_DIR}}/{{.APP_NAME}}-signed.exe"
+
+  # Explicit output paths for cross-builds
+  BINARY_LINUX:          "{{.BUILD_DIR}}/{{.APP_NAME}}"
+  BINARY_WINDOWS:        "{{.BUILD_DIR}}/{{.APP_NAME}}.exe"
+  BINARY_WINDOWS_SIGNED: "{{.BUILD_DIR}}/{{.APP_NAME}}-signed.exe"
+  BINARY_DARWIN:         "{{.BUILD_DIR}}/{{.APP_NAME}}"
+
+  # Windows signing — certificate store name (signtool on Windows)
+  CERT_NAME:     "Marco Janker (Arbeit, Code signing)"
+  TIMESTAMP_URL: "http://timestamp.digicert.com"
+  # Cross-platform Windows signing (osslsigncode on Linux/macOS):
+  #   set SIGNING_CERT_PFX (path to .pfx/.p12) and SIGNING_CERT_PASSWORD
+  # macOS signing:   set MACOS_SIGNING_IDENTITY ("Developer ID Application: Name (TEAMID)")
+  # macOS notarization: set APPLE_ID, APPLE_TEAM_ID, APPLE_APP_PASSWORD
+  # Linux GPG signing:  set GPG_KEY_ID
 
 tasks:
   default:
-    desc: Build the application with all dependencies
+    desc: Build for current platform and copy assets
     cmds:
       - task: build
-      - task: copy-config
+      - task: copy-assets
 
-  # Build the application for current platform
+  # ── Native builds ───────────────────────────────────────────────────────────
+
   build:
-    desc: Build the application for current platform
+    desc: Build for current platform
     cmds:
+      - mkdir -p {{.BUILD_DIR}}
       - go build -o {{.BINARY}} {{.SRC_DIR}}
 
-  # Copy configuration file to build directory
-  copy-config:
-    desc: Copy configuration file
+  build-windows:
+    desc: Build for Windows (run on Windows)
+    platforms: [windows]
+    cmds:
+      - task: build
+      - task: copy-assets
+
+  # ── Cross-compilation via fyne-cross (Docker required) ─────────────────────
+  # fyne-cross provides Fyne-tailored Docker images with CGO, MingW/osxcross,
+  # and OpenGL/GLFW headers for each target — the correct approach for this app.
+  # Install: go install github.com/fyne-io/fyne-cross@latest
+  # Output lands in fyne-cross/bin/<os>-<arch>/ and is copied to build/.
+
+  cross-windows:
+    desc: Cross-compile for Windows/amd64 via fyne-cross (Docker)
+    platforms: [linux, darwin]
+    cmds:
+      - fyne-cross windows -arch=amd64 -app-id {{.APP_ID}} {{.SRC_DIR}}
+      - mkdir -p {{.BUILD_DIR}}
+      - cp {{.FYNE_CROSS_BIN}}/windows-amd64/{{.APP_NAME}}.exe {{.BINARY_WINDOWS}}
+      - task: copy-assets-posix
+
+  cross-linux:
+    desc: Cross-compile for Linux/amd64 via fyne-cross (Docker)
+    cmds:
+      - fyne-cross linux -arch=amd64 -app-id {{.APP_ID}} {{.SRC_DIR}}
+      - mkdir -p {{.BUILD_DIR}}
+      - cp {{.FYNE_CROSS_BIN}}/linux-amd64/{{.APP_NAME}} {{.BINARY_LINUX}}
+      - task: copy-assets-posix
+
+  cross-darwin:
+    desc: Cross-compile for macOS/amd64 via fyne-cross (Docker)
+    platforms: [linux]
+    cmds:
+      - fyne-cross darwin -arch=amd64 -app-id {{.APP_ID}} {{.SRC_DIR}}
+      - mkdir -p {{.BUILD_DIR}}
+      - cp {{.FYNE_CROSS_BIN}}/darwin-amd64/{{.APP_NAME}} {{.BINARY_DARWIN}}
+      - task: copy-assets-posix
+
+  cross-all:
+    desc: Cross-compile for all platforms via fyne-cross (Docker)
+    platforms: [linux, darwin]
+    cmds:
+      - task: cross-linux
+      - task: cross-windows
+      - task: cross-darwin
+
+  fyne-cross-install:
+    desc: Install fyne-cross tool
+    cmds:
+      - go install github.com/fyne-io/fyne-cross@latest
+
+  # ── Code signing ────────────────────────────────────────────────────────────
+
+  sign-windows:
+    desc: >
+      Sign Windows executable.
+      On Windows: signtool with CERT_NAME from certificate store.
+      On Linux/macOS: osslsigncode with SIGNING_CERT_PFX + SIGNING_CERT_PASSWORD (cross-signing).
+    cmds:
+      - cmd: >
+          signtool sign /n "{{.CERT_NAME}}" /t {{.TIMESTAMP_URL}} /fd sha256 /v "{{.BINARY_WINDOWS}}"
+        platforms: [windows]
+      - cmd: >
+          osslsigncode sign
+          -pkcs12 "$SIGNING_CERT_PFX"
+          -pass "$SIGNING_CERT_PASSWORD"
+          -t {{.TIMESTAMP_URL}}
+          -in {{.BINARY_WINDOWS}}
+          -out {{.BINARY_WINDOWS_SIGNED}} &&
+          echo "Signed: {{.BINARY_WINDOWS_SIGNED}}"
+        platforms: [linux, darwin]
+
+  sign-macos:
+    desc: Sign macOS binary with codesign (requires MACOS_SIGNING_IDENTITY env var)
+    platforms: [darwin]
+    cmds:
+      - codesign --deep --force --verify --verbose --sign "$MACOS_SIGNING_IDENTITY" {{.BINARY_DARWIN}}
+      - codesign --verify --verbose {{.BINARY_DARWIN}}
+
+  notarize-macos:
+    desc: Notarize macOS binary (requires APPLE_ID, APPLE_TEAM_ID, APPLE_APP_PASSWORD env vars)
+    platforms: [darwin]
+    cmds:
+      - xcrun notarytool submit {{.BINARY_DARWIN}}
+          --apple-id "$APPLE_ID"
+          --team-id "$APPLE_TEAM_ID"
+          --password "$APPLE_APP_PASSWORD"
+          --wait
+      - xcrun stapler staple {{.BINARY_DARWIN}}
+
+  sign-linux:
+    desc: Create detached GPG signature for Linux binary (requires GPG_KEY_ID env var)
+    platforms: [linux]
+    cmds:
+      - gpg --batch --yes --armor --detach-sign --local-user "$GPG_KEY_ID" {{.BINARY_LINUX}}
+      - echo "Signature written to {{.BINARY_LINUX}}.asc"
+
+  # ── Testing & quality ───────────────────────────────────────────────────────
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test ./...
+
+  test-verbose:
+    desc: Run tests with verbose output and race detection
+    cmds:
+      - go test -v -race ./...
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run
+
+  fmt:
+    desc: Format code with go fmt and goimports
+    cmds:
+      - go fmt ./...
+      - goimports -w .
+
+  check:
+    desc: Run fmt + lint + test
+    cmds:
+      - task: fmt
+      - task: lint
+      - task: test
+
+  # ── Dependencies ────────────────────────────────────────────────────────────
+
+  deps:
+    desc: Download and tidy Go dependencies
+    cmds:
+      - go mod download
+      - go mod tidy
+
+  vendor:
+    desc: Sync vendor directory with go.mod
+    cmds:
+      - go mod vendor
+      - go mod verify
+
+  update-modules:
+    desc: Update all Go modules to latest versions
+    cmds:
+      - go get -u ./...
+      - go mod tidy
+      - go mod vendor
+      - go mod verify
+
+  # ── Utilities ───────────────────────────────────────────────────────────────
+
+  clean:
+    desc: Remove build artifacts and fyne-cross output
+    cmds:
+      - cmd: rm -rf {{.BUILD_DIR}} fyne-cross
+        platforms: [linux, darwin]
+      - cmd: rmdir /s /q {{.BUILD_DIR}}
+        platforms: [windows]
+
+  # ── Internal helpers ────────────────────────────────────────────────────────
+
+  copy-assets:
+    internal: true
     cmds:
       - cmd: cp config.yaml {{.BUILD_DIR}}/
         platforms: [linux, darwin]
@@ -38,109 +216,8 @@ tasks:
       - cmd: xcopy /s /e /h /i /y templates {{.BUILD_DIR}}\\templates
         platforms: [windows]
 
-  # This task is to build on macOS/Linux for the Windows platform
-  cross-build-windows:
-    desc: Cross-compile for Windows (from macOS/Linux)
-    platforms: [darwin, linux]
+  copy-assets-posix:
+    internal: true
     cmds:
-      - mkdir -p {{.BUILD_DIR}}
-      - GOOS=windows GOARCH=amd64 go build -tags "!windows" -o {{.BINARY}} {{.SRC_DIR}}
-      - task: copy-config
-
-  # Build CLI-only version for Windows (no GUI dependencies)
-  cross-build-windows-cli:
-    desc: Cross-compile CLI-only version for Windows (from macOS/Linux)
-    platforms: [darwin, linux]
-    cmds:
-      - mkdir -p {{.BUILD_DIR}}
-      - GOOS=windows GOARCH=amd64 go build -tags "!windows" -o {{.BUILD_DIR}}/{{.APP_NAME}}-cli.exe {{.SRC_DIR}}
-      - task: copy-config
-
-  # This task is to build on Windows for the Windows platform
-  build-windows:
-    desc: Build for Windows (on Windows)
-    platforms: [windows]
-    cmds:
-      - task: build
-      - task: copy-config
-
-  # Sign the Windows executable
-  sign-windows:
-    desc: Sign the Windows executable with code signing certificate
-    platforms: [windows]
-    cmds:
-      - task: build-windows
-      - cmd: signtool sign /n "{{.CERT_NAME}}" /t http://timestamp.digicert.com /fd sha256 /v "{{.BINARY}}"
-      - cmd: move "{{.BINARY}}" "{{.WINDOWS_SIGNED}}"
-      - echo "Signed executable saved as {{.WINDOWS_SIGNED}}"
-
-  # Clean build artifacts
-  clean:
-    desc: Clean build artifacts
-    cmds:
-      - cmd: rm -rf {{.BUILD_DIR}}
-        platforms: [linux, darwin]
-      - cmd: rmdir /s /q {{.BUILD_DIR}}
-        platforms: [windows]
-
-  # Install dependencies
-  deps:
-    desc: Install Go dependencies
-    cmds:
-      - go mod download
-      - go mod tidy
-
-  # Update and check Go modules
-  modules:
-    desc: Update and check Go modules
-    cmds:
-      - go mod download
-      - go mod verify
-      - go mod tidy
-      - go list -mod=mod -m all
-      - go list -mod=mod -u -m all
-
-  # Update Go modules to latest versions
-  update-modules:
-    desc: Update Go modules to latest versions
-    cmds:
-      - go get -u ./...
-      - go mod tidy
-      - go mod vendor
-      - go mod verify
-      - echo "Modules updated successfully"
-
-  # Sync vendor directory
-  vendor:
-    desc: Sync vendor directory with go.mod
-    cmds:
-      - go mod vendor
-      - go mod verify
-      - echo "Vendor directory synced successfully"
-
-  # Run tests
-  test:
-    desc: Run tests
-    cmds:
-      - go test ./...
-
-  # Run linter
-  lint:
-    desc: Run linter
-    cmds:
-      - golangci-lint run
-
-  # Format code
-  fmt:
-    desc: Format Go code
-    cmds:
-      - go fmt ./...
-      - goimports -w .
-
-  # Check code
-  check:
-    desc: Check code quality
-    cmds:
-      - task: fmt
-      - task: lint
-      - task: test
+      - cp config.yaml {{.BUILD_DIR}}/
+      - cp -r templates {{.BUILD_DIR}}/

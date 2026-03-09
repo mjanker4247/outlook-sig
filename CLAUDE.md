@@ -9,14 +9,25 @@ Uses [Task](https://taskfile.dev) as the build tool (`brew install go-task` on m
 ```bash
 task                        # Build for current platform + copy config/templates
 task build                  # Compile binary only
-task cross-build-windows    # Cross-compile for Windows from macOS/Linux
+task cross-windows          # Cross-compile for Windows/amd64 via fyne-cross (Docker)
+task cross-linux            # Cross-compile for Linux/amd64 via fyne-cross (Docker)
+task cross-darwin           # Cross-compile for macOS/amd64 via fyne-cross (Docker, Linux only)
+task cross-all              # Cross-compile for all platforms
+task sign-windows           # Sign Windows .exe (signtool on Windows; osslsigncode on Linux/macOS)
+task sign-macos             # Sign macOS binary with codesign (macOS only)
+task notarize-macos         # Submit macOS binary for Apple notarization (macOS only)
+task sign-linux             # GPG-sign Linux binary
 task test                   # Run all tests: go test ./...
+task test-verbose           # Run tests with -v -race
 task lint                   # Run golangci-lint
 task fmt                    # Format with go fmt + goimports
 task check                  # fmt + lint + test
-task clean                  # Remove build/ directory
+task clean                  # Remove build/ and fyne-cross/ directories
 task vendor                 # Sync vendor/ with go.mod
+task fyne-cross-install     # Install fyne-cross tool
 ```
+
+**Cross-compilation note:** The app uses Fyne (CGO + OpenGL/GLFW), so cross-compilation requires Docker and `fyne-cross` (not plain `go build`). Install with `task fyne-cross-install`. fyne-cross uses Fyne-specific Docker images with MingW/osxcross toolchains and graphics headers.
 
 Run a single test:
 ```bash
@@ -37,7 +48,7 @@ Single binary with dual-mode operation (CLI and GUI via [Fyne](https://fyne.io))
 - `pkg/common` — Shared utilities: `GetTemplateBase()` (resolves `<exe_dir>/templates/`), input validation (name, email, phone via nyaruka/phonenumbers), phone formatting, shared constants (`BufferSizeLimit`, `FileSizeLimit`)
 
 **Configuration flow:**
-1. `config.yaml` lives next to the binary in the build directory (copied by `task copy-config`)
+1. `config.yaml` lives next to the binary in the build directory (copied by `task default` / `task build-windows`)
 2. `Installer.LoadConfig()` reads it; `template_source` is either `"local"` or `"web"`
 3. When `"web"`, `DownloadWebTemplates()` fetches `<base_url><template_name>.htm` and `<base_url><template_name>.txt`
 4. `Installer.Install(data)` renders templates and writes to the Outlook signatures directory
