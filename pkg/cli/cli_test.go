@@ -13,10 +13,16 @@ func TestCLIHelp(t *testing.T) {
 		t.Errorf("Expected app name 'Outlook Signature Installer', got '%s'", app.Name)
 	}
 
-	// Test flag definitions
-	nameFlag := app.Flags[1] // --name flag
-	if nameFlag.Names()[0] != "name" {
-		t.Errorf("Expected name flag, got %s", nameFlag.Names()[0])
+	// Test that --name flag is defined (search by name to avoid fragile index assumptions).
+	var nameFlag cli.Flag
+	for _, f := range app.Flags {
+		if f.Names()[0] == "name" {
+			nameFlag = f
+			break
+		}
+	}
+	if nameFlag == nil {
+		t.Errorf("Expected --name flag to be defined, but it was not found")
 	}
 }
 func TestGetOrPrompt(t *testing.T) {

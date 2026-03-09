@@ -167,6 +167,8 @@ func createInstaller(c *cli.Context) (*signature.Installer, error) {
 	return installer, nil
 }
 
+// getOrPrompt returns the trimmed flag value when non-empty, or prompts stdin and
+// returns the trimmed user input.
 func getOrPrompt(value, prompt string) (string, error) {
 	if strings.TrimSpace(value) != "" {
 		return strings.TrimSpace(value), nil

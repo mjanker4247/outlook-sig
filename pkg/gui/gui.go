@@ -29,7 +29,9 @@ func createValidatedEntry(placeholder string, validator func(string) error) *wid
 	return entry
 }
 
-// ShowGUI displays the signature installer GUI
+// ShowGUI displays the signature installer GUI.
+// Template loading is deferred to the OnSubmit handler so the window is shown
+// before any error dialogs are displayed (dialog.ShowError requires a visible window).
 func ShowGUI() {
 	myApp := app.New()
 	window := myApp.NewWindow("Outlook Signature Installer")
@@ -39,13 +41,6 @@ func ShowGUI() {
 	titleEntry := createValidatedEntry("Your profession or title (optional)", common.ValidateTitle)
 	emailEntry := createValidatedEntry("Your email address", common.ValidateEmail)
 	phoneEntry := createValidatedEntry("Your phone number", common.ValidatePhoneNumber)
-
-	// Get template base directory
-	templateBase, err := common.GetTemplateBase()
-	if err != nil {
-		dialog.ShowError(fmt.Errorf("failed to find templates: %v", err), window)
-		return
-	}
 
 	// Create form
 	form := &widget.Form{
@@ -69,6 +64,14 @@ func ShowGUI() {
 
 			if err := phoneEntry.Validate(); err != nil {
 				dialog.ShowError(err, window)
+				return
+			}
+
+			// Resolve template directory at submission time so the window is
+			// already visible when any error dialog is shown.
+			templateBase, err := common.GetTemplateBase()
+			if err != nil {
+				dialog.ShowError(fmt.Errorf("failed to find templates: %v", err), window)
 				return
 			}
 

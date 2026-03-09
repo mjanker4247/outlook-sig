@@ -4,6 +4,50 @@ import (
 	"testing"
 )
 
+func TestValidateName(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+		errMsg  string
+	}{
+		{name: "valid simple name", input: "John Doe", wantErr: false},
+		{name: "valid unicode umlauts", input: "Jürgen Müller", wantErr: false},
+		{name: "valid hyphenated", input: "Anne-Marie", wantErr: false},
+		{name: "valid with dot (title)", input: "Dr. Smith", wantErr: false},
+		{name: "valid apostrophe", input: "O'Brien", wantErr: false},
+		{name: "valid single unicode letter padded", input: "Ü Doe", wantErr: false},
+		{name: "empty string", input: "", wantErr: true, errMsg: ErrNameEmpty},
+		{name: "whitespace only", input: "   ", wantErr: true, errMsg: ErrNameEmpty},
+		{name: "too short single char", input: "A", wantErr: true, errMsg: ErrNameTooShort},
+		{name: "invalid chars digit", input: "John2 Doe", wantErr: true, errMsg: ErrNameInvalidChars},
+		{name: "invalid chars symbol", input: "John@Doe", wantErr: true, errMsg: ErrNameInvalidChars},
+		{name: "consecutive punctuation dots", input: "John..Doe", wantErr: true, errMsg: ErrNameConsecutivePunct},
+		{name: "consecutive punctuation hyphens", input: "John--Doe", wantErr: true, errMsg: ErrNameConsecutivePunct},
+		{name: "leading hyphen", input: "-John", wantErr: true, errMsg: ErrNameInvalidPunctPos},
+		{name: "trailing hyphen", input: "John-", wantErr: true, errMsg: ErrNameInvalidPunctPos},
+		{name: "leading apostrophe", input: "'John", wantErr: true, errMsg: ErrNameInvalidPunctPos},
+		{name: "trailing apostrophe", input: "John'", wantErr: true, errMsg: ErrNameInvalidPunctPos},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateName(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateName(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+				return
+			}
+			if tt.wantErr && err != nil {
+				if validErr, ok := err.(*ValidationError); !ok {
+					t.Errorf("ValidateName(%q) error is not ValidationError", tt.input)
+				} else if validErr.Message != tt.errMsg {
+					t.Errorf("ValidateName(%q) error message = %q, want %q", tt.input, validErr.Message, tt.errMsg)
+				}
+			}
+		})
+	}
+}
+
 func TestValidateEmail(t *testing.T) {
 	tests := []struct {
 		name    string

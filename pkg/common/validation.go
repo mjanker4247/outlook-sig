@@ -21,7 +21,7 @@ const (
 // Validation error messages
 const (
 	ErrNameEmpty            = "cannot be empty"
-	ErrNameTooShort         = "must contain at least one non-empty line"
+	ErrNameTooShort         = "must be at least 2 characters long"
 	ErrNameInvalidChars     = "can only contain letters, spaces, dots, hyphens, and apostrophes"
 	ErrNameConsecutivePunct = "cannot contain multiple consecutive punctuation marks"
 	ErrNameInvalidPunctPos  = "cannot start or end with punctuation marks (except for dots)"
@@ -66,12 +66,12 @@ func isNamePunct(r rune) bool {
 func ValidateName(name string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return &ValidationError{Field: "Name", Message: ErrNameEmpty}
+		return newValidationError("Name", ErrNameEmpty)
 	}
 
 	runes := []rune(name)
 	if len(runes) < MinNameLength {
-		return &ValidationError{Field: "Name", Message: "must be at least 2 characters long"}
+		return newValidationError("Name", ErrNameTooShort)
 	}
 
 	// Allow Unicode letters, spaces, dots, hyphens, and apostrophes.

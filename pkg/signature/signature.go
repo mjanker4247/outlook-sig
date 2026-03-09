@@ -20,6 +20,21 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// placeholder maps a pre-compiled regex to its corresponding Data field.
+type placeholder struct {
+	re    *regexp.Regexp
+	value func(Data) string
+}
+
+// placeholders holds pre-compiled regex patterns for .txt template substitution.
+var placeholders = []placeholder{
+	{regexp.MustCompile(`{{\s*\.Name\s*}}`), func(d Data) string { return d.Name }},
+	{regexp.MustCompile(`{{\s*\.Title\s*}}`), func(d Data) string { return d.Title }},
+	{regexp.MustCompile(`{{\s*\.Email\s*}}`), func(d Data) string { return d.Email }},
+	{regexp.MustCompile(`{{\s*\.PhoneDisplay\s*}}`), func(d Data) string { return d.PhoneDisplay }},
+	{regexp.MustCompile(`{{\s*\.PhoneLink\s*}}`), func(d Data) string { return d.PhoneLink }},
+}
+
 // Config represents the application configuration.
 type Config struct {
 	TemplateName   string `yaml:"template_name"`
@@ -157,6 +172,8 @@ func (i *Installer) DownloadWebTemplates() error {
 }
 
 // downloadFile downloads a single file from a URL into the fs.
+// The response body is limited to common.FileSizeLimit bytes via io.LimitReader
+// to prevent memory exhaustion from oversized responses.
 func (i *Installer) downloadFile(client *http.Client, url, path string) error {
 	resp, err := client.Get(url)
 	if err != nil {
@@ -174,7 +191,8 @@ func (i *Installer) downloadFile(client *http.Client, url, path string) error {
 	}
 	defer file.Close()
 
-	if _, err = io.Copy(file, resp.Body); err != nil {
+	limited := io.LimitReader(resp.Body, common.FileSizeLimit)
+	if _, err = io.Copy(file, limited); err != nil {
 		return fmt.Errorf("failed to write to file %s: %v", path, err)
 	}
 
@@ -210,34 +228,13 @@ func GetOutlookSignatureDir() (string, error) {
 	}
 }
 
-// replacePlaceholders replaces placeholders like {{ .Name }} in a template.
-func (i *Installer) replacePlaceholders(templateOrPath string, data Data) (string, error) {
-	var content string
-
-	// If it's a file path that exists, read it; otherwise treat as raw template string.
-	if _, err := i.fs.Stat(templateOrPath); err == nil {
-		templateContent, err := afero.ReadFile(i.fs, templateOrPath)
-		if err != nil {
-			return "", fmt.Errorf("failed to read template file %s: %v", templateOrPath, err)
-		}
-		content = string(templateContent)
-	} else {
-		content = templateOrPath
+// replacePlaceholders replaces {{ .Field }} placeholders in a .txt template string
+// using pre-compiled regex patterns. File reading is the caller's responsibility.
+func replacePlaceholders(content string, data Data) string {
+	for _, p := range placeholders {
+		content = p.re.ReplaceAllString(content, p.value(data))
 	}
-
-	values := map[string]string{
-		"Name":         data.Name,
-		"Title":        data.Title,
-		"Email":        data.Email,
-		"PhoneDisplay": data.PhoneDisplay,
-		"PhoneLink":    data.PhoneLink,
-	}
-
-	for key, val := range values {
-		pattern := regexp.MustCompile(`{{\s*\.` + regexp.QuoteMeta(key) + `\s*}}`)
-		content = pattern.ReplaceAllString(content, val)
-	}
-	return content, nil
+	return content
 }
 
 // Install installs a signature with the given data.
@@ -268,9 +265,13 @@ func (i *Installer) Install(data Data) error {
 }
 
 // validateTemplateBase checks if the template base directory exists.
+// Any stat error — including permission-denied — is returned, not just "not exist".
 func (i *Installer) validateTemplateBase() error {
-	if _, err := i.fs.Stat(i.TemplateBase); os.IsNotExist(err) {
-		return fmt.Errorf("templates directory not found at %s", i.TemplateBase)
+	if _, err := i.fs.Stat(i.TemplateBase); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("templates directory not found at %s", i.TemplateBase)
+		}
+		return fmt.Errorf("failed to access templates directory %s: %v", i.TemplateBase, err)
 	}
 	return nil
 }
@@ -286,11 +287,9 @@ func (i *Installer) ensureConfigLoaded() error {
 }
 
 // handleWebTemplates downloads web templates if needed.
+// BaseURL validation is delegated to DownloadWebTemplates.
 func (i *Installer) handleWebTemplates() error {
 	if i.Config.TemplateSource == "web" {
-		if i.Config.BaseURL == "" {
-			return fmt.Errorf("base_url must be set when template_source is \"web\"")
-		}
 		if err := i.DownloadWebTemplates(); err != nil {
 			return fmt.Errorf("failed to download web templates: %v", err)
 		}
@@ -387,8 +386,14 @@ func (i *Installer) installFile(sigName, sigDir, ext string, data Data) error {
 }
 
 // installHTMLFile installs an HTML signature file.
+// The template is read via afero so the filesystem abstraction is respected in tests.
 func (i *Installer) installHTMLFile(templatePath, destPath string, data Data) error {
-	tpl, err := htmltemplate.New(filepath.Base(templatePath)).ParseFiles(templatePath)
+	raw, err := afero.ReadFile(i.fs, templatePath)
+	if err != nil {
+		return fmt.Errorf("failed to read template %s: %v", templatePath, err)
+	}
+
+	tpl, err := htmltemplate.New(filepath.Base(templatePath)).Parse(string(raw))
 	if err != nil {
 		return fmt.Errorf("failed to parse %s: %v", templatePath, err)
 	}
@@ -416,10 +421,12 @@ func (i *Installer) installHTMLFile(templatePath, destPath string, data Data) er
 
 // installTextFile installs a text signature file.
 func (i *Installer) installTextFile(templatePath, destPath string, data Data) error {
-	result, err := i.replacePlaceholders(templatePath, data)
+	raw, err := afero.ReadFile(i.fs, templatePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read template file %s: %v", templatePath, err)
 	}
+
+	result := replacePlaceholders(string(raw), data)
 
 	if err := afero.WriteFile(i.fs, destPath, []byte(result), 0o644); err != nil {
 		return fmt.Errorf("failed to write file %s: %v", destPath, err)
