@@ -1,0 +1,3 @@
+template_name: "Standard"
+template_source: "web" # "local" or "web"
+base_url: "http://de-tlp-n-emv23/templates/"

@@ -4,9 +4,38 @@ import (
 	"fmt"
 	"net/mail"
 	"strings"
+	"unicode"
 
-	"github.com/asaskevich/govalidator"
 	"github.com/nyaruka/phonenumbers"
+)
+
+const (
+	// MinNameLength is the minimum required length for a name
+	MinNameLength = 2
+	// BufferSizeLimit is the maximum buffer size to prevent memory exhaustion
+	BufferSizeLimit = 5 * 1024 * 1024 // 5MB
+	// FileSizeLimit is the maximum file size for copying
+	FileSizeLimit = 50 * 1024 * 1024 // 50MB
+)
+
+// Validation error messages
+const (
+	ErrNameEmpty            = "cannot be empty"
+	ErrNameTooShort         = "must be at least 2 characters long"
+	ErrNameInvalidChars     = "can only contain letters, spaces, dots, hyphens, and apostrophes"
+	ErrNameConsecutivePunct = "cannot contain multiple consecutive punctuation marks"
+	ErrNameInvalidPunctPos  = "cannot start or end with punctuation marks (except for dots)"
+	ErrEmailEmpty           = "cannot be empty"
+	ErrEmailInvalid         = "invalid email format"
+	ErrPhoneEmpty           = "cannot be empty"
+	ErrPhoneInvalid         = "invalid phone number format"
+	ErrPhoneNotValid        = "not a valid phone number"
+	ErrPhoneCountryCode     = "invalid country code"
+	ErrPhoneTooShort        = "number is too short"
+	ErrPhoneTooLong         = "number is too long"
+	ErrPhoneInvalidLength   = "number has invalid length for the country"
+	ErrPhoneFormat          = "could not be formatted"
+	ErrSignatureInvalid     = "contains invalid characters"
 )
 
 // ValidationError represents a validation error with a user-friendly message
@@ -19,77 +48,69 @@ func (e *ValidationError) Error() string {
 	return fmt.Sprintf("%s: %s", e.Field, e.Message)
 }
 
-// ValidateName performs comprehensive validation on a name string
+// newValidationError creates a new validation error with consistent formatting
+func newValidationError(field, message string) error {
+	return &ValidationError{
+		Field:   field,
+		Message: message,
+	}
+}
+
+// isNamePunct reports whether r is a name-allowed punctuation mark.
+func isNamePunct(r rune) bool {
+	return r == '.' || r == '-' || r == '\''
+}
+
+// ValidateName validates a name, supporting Unicode letters (e.g. German umlauts).
+// Allowed characters: Unicode letters, spaces, dots, hyphens, apostrophes.
 func ValidateName(name string) error {
-	// Trim whitespace only at the beginning and end
 	name = strings.TrimSpace(name)
-
-	// Check if empty
 	if name == "" {
-		return &ValidationError{
-			Field:   "Name",
-			Message: "cannot be empty",
+		return newValidationError("Name", ErrNameEmpty)
+	}
+
+	runes := []rune(name)
+	if len(runes) < MinNameLength {
+		return newValidationError("Name", ErrNameTooShort)
+	}
+
+	// Allow Unicode letters, spaces, dots, hyphens, and apostrophes.
+	for _, r := range runes {
+		if !unicode.IsLetter(r) && r != ' ' && !isNamePunct(r) {
+			return &ValidationError{Field: "Name", Message: ErrNameInvalidChars}
 		}
 	}
 
-	// Check if name is too short (less than 2 characters)
-	if len(name) < 2 {
-		return &ValidationError{
-			Field:   "Name",
-			Message: "must be at least 2 characters long",
-		}
-	}
-
-	// Use govalidator to check if the name is valid
-	if !govalidator.Matches(name, "^[a-zA-Z\\s\\.\\-']+$") {
-		return &ValidationError{
-			Field:   "Name",
-			Message: "can only contain letters, spaces, dots, hyphens, and apostrophes",
-		}
-	}
-
-	// Normalize multiple spaces into a single space
+	// Normalize multiple spaces before further checks.
 	name = strings.Join(strings.Fields(name), " ")
+	runes = []rune(name)
 
-	// Check for multiple consecutive punctuation or special characters
-	for i := range name[:len(name)-1] {
-		current := name[i]
-		next := name[i+1]
-		if (current == '.' || current == '-' || current == '\'') && (next == '.' || next == '-' || next == '\'') {
-			return &ValidationError{
-				Field:   "Name",
-				Message: "cannot contain multiple consecutive punctuation marks",
-			}
+	// Consecutive punctuation marks are not allowed (e.g. "..", "--").
+	for i := 0; i < len(runes)-1; i++ {
+		if isNamePunct(runes[i]) && isNamePunct(runes[i+1]) {
+			return &ValidationError{Field: "Name", Message: ErrNameConsecutivePunct}
 		}
 	}
 
-	// Check for punctuation at the start or end
-	if strings.HasPrefix(name, ".") || strings.HasPrefix(name, "-") || strings.HasPrefix(name, "'") ||
-		strings.HasSuffix(name, "-") || strings.HasSuffix(name, "'") {
-		return &ValidationError{
-			Field:   "Name",
-			Message: "cannot start or end with punctuation marks (except for dots)",
-		}
+	// Names cannot start or end with hyphens or apostrophes (trailing dot is OK, e.g. "Dr.").
+	first, last := runes[0], runes[len(runes)-1]
+	if first == '-' || first == '\'' || last == '-' || last == '\'' {
+		return &ValidationError{Field: "Name", Message: ErrNameInvalidPunctPos}
 	}
 
 	return nil
 }
 
-// ValidateEmail checks if the email address is valid
+// ValidateEmail checks if the email address is valid.
 func ValidateEmail(email string) error {
+	email = strings.TrimSpace(email)
 	if email == "" {
-		return &ValidationError{
-			Field:   "Email",
-			Message: "cannot be empty",
-		}
+		return newValidationError("Email", ErrEmailEmpty)
 	}
 
 	_, err := mail.ParseAddress(email)
 	if err != nil {
-		return &ValidationError{
-			Field:   "Email",
-			Message: "invalid email format",
-		}
+		return newValidationError("Email", ErrEmailInvalid)
 	}
 
 	return nil
@@ -97,59 +118,43 @@ func ValidateEmail(email string) error {
 
 // ValidatePhoneNumber checks if the phone number is valid using the phonenumbers library
 func ValidatePhoneNumber(phone string) error {
+	// Trim whitespace first
+	phone = strings.TrimSpace(phone)
+
 	if phone == "" {
-		return &ValidationError{
-			Field:   "Phone",
-			Message: "cannot be empty",
-		}
+		return newValidationError("Phone", ErrPhoneEmpty)
 	}
 
 	// Try to parse the phone number (defaulting to DE as fallback)
 	num, err := phonenumbers.Parse(phone, "DE")
 	if err != nil {
-		return &ValidationError{
-			Field:   "Phone",
-			Message: "invalid phone number format",
-		}
+		return newValidationError("Phone", ErrPhoneInvalid)
 	}
 
-	// First check if the number is possible and get specific validation errors
+	return validatePhoneNumberReason(num)
+}
+
+// validatePhoneNumberReason validates the phone number based on the reason code
+func validatePhoneNumberReason(num *phonenumbers.PhoneNumber) error {
 	reason := phonenumbers.IsPossibleNumberWithReason(num)
+
 	switch reason {
 	case phonenumbers.IS_POSSIBLE:
 		// Only check IsValidNumber if the number is possible
 		if !phonenumbers.IsValidNumber(num) {
-			return &ValidationError{
-				Field:   "Phone",
-				Message: "not a valid phone number",
-			}
+			return newValidationError("Phone", ErrPhoneNotValid)
 		}
 		return nil
 	case phonenumbers.INVALID_COUNTRY_CODE:
-		return &ValidationError{
-			Field:   "Phone",
-			Message: "invalid country code",
-		}
+		return newValidationError("Phone", ErrPhoneCountryCode)
 	case phonenumbers.TOO_SHORT:
-		return &ValidationError{
-			Field:   "Phone",
-			Message: "number is too short",
-		}
+		return newValidationError("Phone", ErrPhoneTooShort)
 	case phonenumbers.TOO_LONG:
-		return &ValidationError{
-			Field:   "Phone",
-			Message: "number is too long",
-		}
+		return newValidationError("Phone", ErrPhoneTooLong)
 	case phonenumbers.INVALID_LENGTH:
-		return &ValidationError{
-			Field:   "Phone",
-			Message: "number has invalid length for the country",
-		}
+		return newValidationError("Phone", ErrPhoneInvalidLength)
 	default:
-		return &ValidationError{
-			Field:   "Phone",
-			Message: "not a valid phone number",
-		}
+		return newValidationError("Phone", ErrPhoneNotValid)
 	}
 }
 
@@ -157,10 +162,7 @@ func ValidatePhoneNumber(phone string) error {
 func FormatPhoneNumber(phone string, countryCode string) (string, string, error) {
 	num, err := phonenumbers.Parse(phone, countryCode)
 	if err != nil {
-		return phone, phone, &ValidationError{
-			Field:   "Phone",
-			Message: "could not be formatted",
-		}
+		return phone, phone, newValidationError("Phone", ErrPhoneFormat)
 	}
 
 	display := phonenumbers.Format(num, phonenumbers.INTERNATIONAL)
@@ -172,10 +174,12 @@ func FormatPhoneNumber(phone string, countryCode string) (string, string, error)
 // ValidateSignatureName checks if the signature name is valid
 func ValidateSignatureName(name string) error {
 	if strings.ContainsAny(name, `/\:*?"<>|`) {
-		return &ValidationError{
-			Field:   "Template",
-			Message: "contains invalid characters",
-		}
+		return newValidationError("Template", ErrSignatureInvalid)
 	}
+	return nil
+}
+
+// ValidateTitle is intentionally permissive — job titles are free-form text.
+func ValidateTitle(_ string) error {
 	return nil
 }

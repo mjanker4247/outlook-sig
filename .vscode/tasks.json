@@ -23,18 +23,14 @@
             ]
         },
         {
-            "label": "Clean",
+            "label": "Build All",
             "type": "shell",
             "command": "task",
-            "args": ["clean"],
-            "group": "build"
-        },
-        {
-            "label": "Run",
-            "type": "shell",
-            "command": "task",
-            "args": ["run"],
-            "group": "build"
+            "args": ["default"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         },
         {
             "label": "Build Windows",
@@ -44,35 +40,46 @@
             "group": "build"
         },
         {
-            "label": "Sign Windows",
+            "label": "Build Windows CLI",
             "type": "shell",
             "command": "task",
-            "args": ["sign-windows"],
+            "args": ["cross-build-windows-cli"],
             "group": "build"
         },
         {
-            "label": "Build All",
+            "label": "Clean",
             "type": "shell",
             "command": "task",
-            "args": ["default"],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "problemMatcher": [
-                {
-                    "owner": "go",
-                    "fileLocation": ["relative", "${workspaceFolder}"],
-                    "pattern": {
-                        "regexp": "^([^:]*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
-                        "file": 1,
-                        "line": 2,
-                        "column": 3,
-                        "severity": 4,
-                        "message": 5
-                    }
-                }
-            ]
+            "args": ["clean"],
+            "group": "build"
+        },
+        {
+            "label": "Test",
+            "type": "shell",
+            "command": "task",
+            "args": ["test"],
+            "group": "test"
+        },
+        {
+            "label": "Lint",
+            "type": "shell",
+            "command": "task",
+            "args": ["lint"],
+            "group": "test"
+        },
+        {
+            "label": "Format",
+            "type": "shell",
+            "command": "task",
+            "args": ["fmt"],
+            "group": "test"
+        },
+        {
+            "label": "Check Code Quality",
+            "type": "shell",
+            "command": "task",
+            "args": ["check"],
+            "group": "test"
         }
     ]
 }

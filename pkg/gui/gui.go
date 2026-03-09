@@ -29,45 +29,26 @@ func createValidatedEntry(placeholder string, validator func(string) error) *wid
 	return entry
 }
 
-// ShowGUI displays the signature installer GUI
+// ShowGUI displays the signature installer GUI.
+// Template loading is deferred to the OnSubmit handler so the window is shown
+// before any error dialogs are displayed (dialog.ShowError requires a visible window).
 func ShowGUI() {
 	myApp := app.New()
 	window := myApp.NewWindow("Outlook Signature Installer")
 
 	// Create form fields with validation
 	nameEntry := createValidatedEntry("Your full name", common.ValidateName)
+	titleEntry := createValidatedEntry("Your profession or title (optional)", common.ValidateTitle)
 	emailEntry := createValidatedEntry("Your email address", common.ValidateEmail)
 	phoneEntry := createValidatedEntry("Your phone number", common.ValidatePhoneNumber)
-
-	// Get template base directory
-	templateBase, err := common.GetTemplateBase()
-	if err != nil {
-		dialog.ShowError(fmt.Errorf("Failed to find templates: %v", err), window)
-		return
-	}
-
-	// Get available templates
-	templates, err := common.GetAvailableTemplates()
-	if err != nil {
-		dialog.ShowError(fmt.Errorf("Failed to load templates: %v", err), window)
-		return
-	}
-
-	// Create template selection dropdown
-	templateSelect := widget.NewSelect(templates, func(selected string) {
-		// This function is called when a template is selected
-	})
-	if len(templates) > 0 {
-		templateSelect.SetSelected(templates[0])
-	}
 
 	// Create form
 	form := &widget.Form{
 		Items: []*widget.FormItem{
 			{Text: "Name", Widget: nameEntry},
+			{Text: "Title", Widget: titleEntry},
 			{Text: "Email", Widget: emailEntry},
 			{Text: "Phone", Widget: phoneEntry},
-			{Text: "Template", Widget: templateSelect},
 		},
 		OnSubmit: func() {
 			// Validate inputs
@@ -86,6 +67,14 @@ func ShowGUI() {
 				return
 			}
 
+			// Resolve template directory at submission time so the window is
+			// already visible when any error dialog is shown.
+			templateBase, err := common.GetTemplateBase()
+			if err != nil {
+				dialog.ShowError(fmt.Errorf("failed to find templates: %v", err), window)
+				return
+			}
+
 			// Format phone number
 			phoneDisplay, phoneLink, err := common.FormatPhoneNumber(phoneEntry.Text, "DE")
 			if err != nil {
@@ -96,6 +85,7 @@ func ShowGUI() {
 			// Create signature data
 			data := signature.Data{
 				Name:         nameEntry.Text,
+				Title:        titleEntry.Text,
 				Email:        emailEntry.Text,
 				PhoneDisplay: phoneDisplay,
 				PhoneLink:    phoneLink,
@@ -103,9 +93,13 @@ func ShowGUI() {
 
 			// Install signature
 			installer := signature.NewInstaller(templateBase)
-			err = installer.Install(data, templateSelect.Selected)
-			if err != nil {
-				dialog.ShowError(fmt.Errorf("Failed to install signature: %v", err), window)
+			if err := installer.LoadConfig(); err != nil {
+				dialog.ShowError(fmt.Errorf("failed to load configuration: %v", err), window)
+				return
+			}
+
+			if err := installer.Install(data); err != nil {
+				dialog.ShowError(fmt.Errorf("failed to install signature: %v", err), window)
 				return
 			}
 
@@ -120,6 +114,6 @@ func ShowGUI() {
 	)
 
 	window.SetContent(content)
-	window.Resize(fyne.NewSize(500, 300))
+	window.Resize(fyne.NewSize(500, 250))
 	window.ShowAndRun()
 }

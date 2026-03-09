@@ -11,8 +11,7 @@
         "args": [
           "--name=John Doe",
           "--email=john.doe@example.com",
-          "--phone=0151 12345678",
-          "--template=OutlookSignature"
+          "--phone=0151 12345678"
         ],
         "env": {},
         "cwd": "${workspaceFolder}"

@@ -4,11 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/spf13/afero"
 )
-
-var fs = afero.NewOsFs()
 
 // GetTemplateBase returns the base directory for templates
 func GetTemplateBase() (string, error) {
@@ -17,33 +13,4 @@ func GetTemplateBase() (string, error) {
 		return "", fmt.Errorf("failed to get executable path: %v", err)
 	}
 	return filepath.Join(filepath.Dir(exeDir), "templates"), nil
-}
-
-// GetAvailableTemplates returns a list of available HTML templates
-func GetAvailableTemplates() ([]string, error) {
-	templateBase, err := GetTemplateBase()
-	if err != nil {
-		return nil, err
-	}
-
-	// Read the templates directory
-	entries, err := afero.ReadDir(fs, templateBase)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read templates directory: %v", err)
-	}
-
-	var templates []string
-	for _, entry := range entries {
-		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".htm" {
-			// Remove the .htm extension for display
-			name := entry.Name()[:len(entry.Name())-4]
-			templates = append(templates, name)
-		}
-	}
-
-	if len(templates) == 0 {
-		return nil, fmt.Errorf("no HTML templates found in %s", templateBase)
-	}
-
-	return templates, nil
 }
