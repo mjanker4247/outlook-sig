@@ -7,6 +7,10 @@ vars:
   SRC_DIR: ./cmd/signature-installer
   FYNE_CROSS_BIN: fyne-cross/bin
 
+  # -H windowsgui suppresses the console window on Windows. The binary re-attaches
+  # to the parent terminal's console at runtime when CLI flags are present.
+  LDFLAGS_WINDOWS: "-H windowsgui"
+
   # Current-platform binary (adds .exe on Windows)
   BINARY: '{{.BUILD_DIR}}/{{.APP_NAME}}{{if eq OS "windows"}}.exe{{end}}'
 
@@ -38,7 +42,10 @@ tasks:
     desc: Build for current platform
     cmds:
       - mkdir -p {{.BUILD_DIR}}
-      - go build -o {{.BINARY}} {{.SRC_DIR}}
+      - cmd: go build -ldflags="{{.LDFLAGS_WINDOWS}}" -o {{.BINARY}} {{.SRC_DIR}}
+        platforms: [windows]
+      - cmd: go build -o {{.BINARY}} {{.SRC_DIR}}
+        platforms: [linux, darwin]
 
   build-windows:
     desc: Build for Windows (run on Windows)
@@ -57,7 +64,7 @@ tasks:
     desc: Cross-compile for Windows/amd64 via fyne-cross (Docker)
     platforms: [linux, darwin]
     cmds:
-      - fyne-cross windows -arch=amd64 -app-id {{.APP_ID}} {{.SRC_DIR}}
+      - fyne-cross windows -arch=amd64 -ldflags="{{.LDFLAGS_WINDOWS}}" -app-id {{.APP_ID}} {{.SRC_DIR}}
       - mkdir -p {{.BUILD_DIR}}
       - cp {{.FYNE_CROSS_BIN}}/windows-amd64/{{.APP_NAME}}.exe {{.BINARY_WINDOWS}}
       - task: copy-assets-posix
