@@ -1,0 +1,107 @@
+<Window x:Class="OutlookSignatureInstaller.Gui.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Outlook Signature Installer"
+        Width="500" Height="440"
+        ResizeMode="CanMinimize"
+        WindowStartupLocation="CenterScreen">
+
+    <!--
+        Mirrors pkg/gui/gui.go: two-tab layout.
+        Fyne AppTabs → WPF TabControl
+        Fyne validated Entry → TextBox + TextBlock (error label) pair
+        Fyne theme colours not reproduced; standard WPF system theme is used.
+    -->
+
+    <Grid Margin="12">
+        <TabControl>
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 Tab 1: Signature — mirrors buildSignatureTab() in gui.go
+                 ═══════════════════════════════════════════════════════════ -->
+            <TabItem Header="Signature">
+                <StackPanel Margin="12,10,12,0" VerticalAlignment="Top">
+
+                    <TextBlock Text="Full Name *" Margin="0,0,0,2"/>
+                    <TextBox x:Name="NameBox"
+                             Margin="0,0,0,2"
+                             TextChanged="OnNameChanged"/>
+                    <TextBlock x:Name="NameError"
+                               Foreground="Red" FontSize="11"
+                               Margin="0,0,0,10"
+                               Visibility="Collapsed"/>
+
+                    <TextBlock Text="Job Title" Margin="0,0,0,2"/>
+                    <TextBox x:Name="TitleBox" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="Email Address *" Margin="0,0,0,2"/>
+                    <TextBox x:Name="EmailBox"
+                             Margin="0,0,0,2"
+                             TextChanged="OnEmailChanged"/>
+                    <TextBlock x:Name="EmailError"
+                               Foreground="Red" FontSize="11"
+                               Margin="0,0,0,10"
+                               Visibility="Collapsed"/>
+
+                    <TextBlock Text="Phone Number *" Margin="0,0,0,2"/>
+                    <TextBox x:Name="PhoneBox"
+                             Margin="0,0,0,2"
+                             TextChanged="OnPhoneChanged"/>
+                    <TextBlock x:Name="PhoneError"
+                               Foreground="Red" FontSize="11"
+                               Margin="0,0,0,10"
+                               Visibility="Collapsed"/>
+
+                    <Button x:Name="InstallButton"
+                            Content="Install Signature"
+                            Click="OnInstallClicked"
+                            Padding="12,6"
+                            HorizontalAlignment="Right"
+                            Margin="0,6,0,0"/>
+
+                    <TextBlock x:Name="StatusLabel"
+                               Margin="0,10,0,0"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 Tab 2: Settings — mirrors buildSettingsTab() in gui.go
+                 ═══════════════════════════════════════════════════════════ -->
+            <TabItem Header="Settings">
+                <StackPanel Margin="12,10,12,0" VerticalAlignment="Top">
+
+                    <TextBlock Text="Template Source" Margin="0,0,0,2"/>
+                    <!-- ComboBox mirrors the Fyne Select widget for "local"/"web" -->
+                    <ComboBox x:Name="TemplateSourceBox" Margin="0,0,0,12">
+                        <ComboBoxItem Content="local"/>
+                        <ComboBoxItem Content="web"/>
+                    </ComboBox>
+
+                    <TextBlock Text="Template Name" Margin="0,0,0,2"/>
+                    <TextBox x:Name="TemplateNameBox" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="Base URL (used when source is 'web')" Margin="0,0,0,2"/>
+                    <TextBox x:Name="BaseUrlBox"
+                             Margin="0,0,0,2"
+                             TextChanged="OnBaseUrlChanged"/>
+                    <TextBlock x:Name="UrlError"
+                               Foreground="Red" FontSize="11"
+                               Margin="0,0,0,10"
+                               Visibility="Collapsed"/>
+
+                    <Button Content="Save Settings"
+                            Click="OnSaveSettingsClicked"
+                            Padding="12,6"
+                            HorizontalAlignment="Right"
+                            Margin="0,6,0,0"/>
+
+                    <TextBlock x:Name="SettingsStatusLabel"
+                               Margin="0,10,0,0"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+            </TabItem>
+
+        </TabControl>
+    </Grid>
+</Window>

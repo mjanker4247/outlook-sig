@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- WinExe suppresses the console window on launch, mirroring Go's -H windowsgui linker flag.
+         The ConsoleHelper class re-attaches to a parent console when CLI args are present. -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>OutlookSignatureInstaller</AssemblyName>
+    <RootNamespace>OutlookSignatureInstaller</RootNamespace>
+    <Platforms>x64</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- YamlDotNet: replaces gopkg.in/yaml.v3 -->
+    <PackageReference Include="YamlDotNet" Version="16.*" />
+    <!-- libphonenumber-csharp: replaces github.com/nyaruka/phonenumbers -->
+    <PackageReference Include="libphonenumber-csharp" Version="8.*" />
+    <!-- System.IO.Abstractions: replaces github.com/spf13/afero for testable file I/O -->
+    <PackageReference Include="System.IO.Abstractions" Version="21.*" />
+  </ItemGroup>
+
+  <!-- Copy templates and config.yaml from the repo root to the build output,
+       mirroring what 'task build' does in the Go project (Taskfile.yml). -->
+  <ItemGroup>
+    <Content Include="..\..\..\..\templates\**" CopyToOutputDirectory="PreserveNewest">
+      <Link>templates\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+    <Content Include="..\..\..\..\config.yaml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
