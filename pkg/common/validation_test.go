@@ -429,3 +429,32 @@ func TestValidateSignatureName(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateURL(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{"valid http", "http://example.com/", false},
+		{"valid https", "https://example.com/templates/", false},
+		{"valid intranet hostname", "http://de-tlp-n-emv23/templates/", false},
+		{"valid https no trailing slash", "https://example.com", false},
+		{"empty string", "", false},    // empty is OK — callers enforce required-ness
+		{"whitespace only", "   ", false}, // trimmed to empty
+		{"missing scheme", "example.com/path", true},
+		{"ftp scheme", "ftp://example.com/", true},
+		{"no host", "http://", true},
+		{"relative path", "/templates/", true},
+		{"plain word", "notaurl", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateURL(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateURL(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+		})
+	}
+}

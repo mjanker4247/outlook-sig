@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"net/mail"
+	"net/url"
 	"strings"
 	"unicode"
 
@@ -36,6 +37,8 @@ const (
 	ErrPhoneInvalidLength   = "number has invalid length for the country"
 	ErrPhoneFormat          = "could not be formatted"
 	ErrSignatureInvalid     = "contains invalid characters"
+	ErrURLEmpty             = "cannot be empty"
+	ErrURLInvalid           = "must be a valid HTTP or HTTPS URL"
 )
 
 // ValidationError represents a validation error with a user-friendly message
@@ -181,5 +184,21 @@ func ValidateSignatureName(name string) error {
 
 // ValidateTitle is intentionally permissive — job titles are free-form text.
 func ValidateTitle(_ string) error {
+	return nil
+}
+
+// ValidateURL checks that rawURL is a syntactically valid HTTP or HTTPS URL.
+// An empty (or whitespace-only) value returns nil — callers that require a
+// value must enforce non-emptiness separately, enabling this to be reused for
+// optional fields. Intranet hostnames (e.g. "http://server/path/") are accepted.
+func ValidateURL(rawURL string) error {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return nil
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return newValidationError("URL", ErrURLInvalid)
+	}
 	return nil
 }

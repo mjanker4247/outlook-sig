@@ -35,13 +35,6 @@ var placeholders = []placeholder{
 	{regexp.MustCompile(`{{\s*\.PhoneLink\s*}}`), func(d Data) string { return d.PhoneLink }},
 }
 
-// Config represents the application configuration.
-type Config struct {
-	TemplateName   string `yaml:"template_name"`
-	TemplateSource string `yaml:"template_source"` // e.g. "local" or "web"
-	BaseURL        string `yaml:"base_url"`        // used when TemplateSource == "web"
-}
-
 // Data represents the signature data structure.
 type Data struct {
 	Name         string
@@ -77,26 +70,53 @@ func (i *Installer) Logger() *slog.Logger {
 	return i.logger
 }
 
-// LoadConfig loads the configuration from the build root directory.
+// LoadConfig loads configuration using priority order:
+//  1. User-profile config (~/…/OutlookSignatureInstaller/config.yaml)
+//  2. Exe-adjacent config (<templateBase>/../config.yaml)
+//
+// The first source that exists and parses successfully is used. A corrupt or
+// invalid user-profile config is logged and skipped in favour of the fallback.
+// An error is returned only when both sources fail.
 func (i *Installer) LoadConfig() error {
-	// buildRoot = parent of templates directory
+	// 1. Try user-profile config.
+	cfg, err := LoadUserConfig(i.fs)
+	if err != nil {
+		i.Logger().Warn("failed to load user config, falling back to exe-adjacent", slog.String("error", err.Error()))
+	} else if cfg != nil {
+		if cfg.TemplateName == "" {
+			i.Logger().Warn("user config has empty template_name, falling back to exe-adjacent")
+		} else {
+			i.Config = cfg
+			i.Logger().Info("configuration loaded from user profile",
+				slog.String("template_name", cfg.TemplateName),
+				slog.String("source", cfg.TemplateSource),
+			)
+			return nil
+		}
+	}
+
+	// 2. Fall back to exe-adjacent config.
 	buildRoot := filepath.Dir(i.TemplateBase)
 	configPath := filepath.Join(buildRoot, "config.yaml")
+	return i.loadConfigFromPath(configPath)
+}
 
-	i.Logger().Info("loading configuration", slog.String("path", configPath))
+// loadConfigFromPath reads and validates a config file at the given path.
+func (i *Installer) loadConfigFromPath(path string) error {
+	i.Logger().Info("loading configuration", slog.String("path", path))
 
-	configData, err := afero.ReadFile(i.fs, configPath)
+	configData, err := afero.ReadFile(i.fs, path)
 	if err != nil {
-		return fmt.Errorf("failed to read config file %s: %v", configPath, err)
+		return fmt.Errorf("failed to read config file %s: %v", path, err)
 	}
 
 	var config Config
 	if err := yaml.Unmarshal(configData, &config); err != nil {
-		return fmt.Errorf("failed to parse config file: %v", err)
+		return fmt.Errorf("failed to parse config file %s: %v", path, err)
 	}
 
 	if config.TemplateName == "" {
-		return fmt.Errorf("template_name is required in config file")
+		return fmt.Errorf("template_name is required in config file %s", path)
 	}
 
 	i.Config = &config
