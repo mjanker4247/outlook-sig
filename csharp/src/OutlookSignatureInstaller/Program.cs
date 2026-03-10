@@ -1,7 +1,7 @@
-using System;
-using System.Windows;
 using OutlookSignatureInstaller.Cli;
 using OutlookSignatureInstaller.Gui;
+using System;
+using System.Windows;
 
 namespace OutlookSignatureInstaller
 {

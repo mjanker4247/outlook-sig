@@ -1,7 +1,7 @@
+using PhoneNumbers;
 using System;
 using System.Linq;
 using System.Net.Mail;
-using PhoneNumbers;
 
 namespace OutlookSignatureInstaller.Common
 {

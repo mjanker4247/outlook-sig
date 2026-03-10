@@ -1,9 +1,8 @@
+using OutlookSignatureInstaller.Signature;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
-using System.Reflection;
 using System.Threading.Tasks;
 using Xunit;
-using OutlookSignatureInstaller.Signature;
 
 namespace OutlookSignatureInstaller.Tests.Signature
 {
@@ -16,9 +15,9 @@ namespace OutlookSignatureInstaller.Tests.Signature
     public class InstallerTests
     {
         // Stable directory used as the fake exe dir / template base in tests
-        private const string FakeExeDir      = @"C:\app";
+        private const string FakeExeDir = @"C:\app";
         private const string FakeTemplateDir = @"C:\app\templates";
-        private const string FakeSigDir      = @"C:\signatures";
+        private const string FakeSigDir = @"C:\signatures";
 
         // ─── Config priority ─────────────────────────────────────────────────────────
 
@@ -42,7 +41,7 @@ namespace OutlookSignatureInstaller.Tests.Signature
             installer.LoadConfig();
 
             Assert.Equal("UserConfig", installer.Config?.TemplateName);
-            Assert.Equal("web",        installer.Config?.TemplateSource);
+            Assert.Equal("web", installer.Config?.TemplateSource);
         }
 
         [Fact]
@@ -56,7 +55,7 @@ namespace OutlookSignatureInstaller.Tests.Signature
             installer.LoadConfig();
 
             Assert.Equal("ExeConfig", installer.Config?.TemplateName);
-            Assert.Equal("local",     installer.Config?.TemplateSource);
+            Assert.Equal("local", installer.Config?.TemplateSource);
         }
 
         [Fact]
@@ -100,11 +99,11 @@ namespace OutlookSignatureInstaller.Tests.Signature
 
             var data = new SignatureData
             {
-                Name         = "John Doe",
-                Title        = "Engineer",
-                Email        = "john@example.com",
+                Name = "John Doe",
+                Title = "Engineer",
+                Email = "john@example.com",
                 PhoneDisplay = "+49 211 123456",
-                PhoneLink    = "+49211123456",
+                PhoneLink = "+49211123456",
             };
 
             await installer.InstallAsync(data);
@@ -116,14 +115,14 @@ namespace OutlookSignatureInstaller.Tests.Signature
             Assert.True(fs.File.Exists(txtPath));
 
             string htmContent = fs.File.ReadAllText(htmPath);
-            Assert.Contains("John Doe",          htmContent);
-            Assert.Contains("john@example.com",  htmContent);
+            Assert.Contains("John Doe", htmContent);
+            Assert.Contains("john@example.com", htmContent);
             // Placeholders must be fully replaced
-            Assert.DoesNotContain("{{ .Name }}",  htmContent);
+            Assert.DoesNotContain("{{ .Name }}", htmContent);
             Assert.DoesNotContain("{{ .Email }}", htmContent);
 
             string txtContent = fs.File.ReadAllText(txtPath);
-            Assert.Contains("John Doe",         txtContent);
+            Assert.Contains("John Doe", txtContent);
             Assert.Contains("john@example.com", txtContent);
         }
 
@@ -163,17 +162,17 @@ namespace OutlookSignatureInstaller.Tests.Signature
 
             var cfg = new Config
             {
-                TemplateName   = "MyTemplate",
+                TemplateName = "MyTemplate",
                 TemplateSource = "web",
-                BaseUrl        = "http://example.com/",
+                BaseUrl = "http://example.com/",
             };
 
             ConfigManager.SaveUserConfig(fs, cfg);
 
             var loaded = ConfigManager.LoadUserConfig(fs);
             Assert.NotNull(loaded);
-            Assert.Equal("MyTemplate",          loaded!.TemplateName);
-            Assert.Equal("web",                 loaded.TemplateSource);
+            Assert.Equal("MyTemplate", loaded!.TemplateName);
+            Assert.Equal("web", loaded.TemplateSource);
             Assert.Equal("http://example.com/", loaded.BaseUrl);
         }
 

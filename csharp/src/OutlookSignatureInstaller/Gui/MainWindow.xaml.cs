@@ -1,10 +1,11 @@
+using OutlookSignatureInstaller.Common;
+using OutlookSignatureInstaller.Signature;
 using System;
 using System.IO.Abstractions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using OutlookSignatureInstaller.Common;
-using OutlookSignatureInstaller.Signature;
+using Validation = OutlookSignatureInstaller.Common.Validation;
 
 namespace OutlookSignatureInstaller.Gui
 {
@@ -92,11 +93,11 @@ namespace OutlookSignatureInstaller.Gui
         private async void OnInstallClicked(object sender, RoutedEventArgs e)
         {
             // Final validation pass before installing
-            var nameErr  = Validation.ValidateName(NameBox.Text);
+            var nameErr = Validation.ValidateName(NameBox.Text);
             var emailErr = Validation.ValidateEmail(EmailBox.Text);
             var phoneErr = Validation.ValidatePhoneNumber(PhoneBox.Text);
 
-            ShowError(NameError,  nameErr?.Message);
+            ShowError(NameError, nameErr?.Message);
             ShowError(EmailError, emailErr?.Message);
             ShowError(PhoneError, phoneErr?.Message);
 
@@ -112,11 +113,11 @@ namespace OutlookSignatureInstaller.Gui
 
                 var data = new SignatureData
                 {
-                    Name         = NameBox.Text,
-                    Title        = TitleBox.Text,
-                    Email        = EmailBox.Text,
+                    Name = NameBox.Text,
+                    Title = TitleBox.Text,
+                    Email = EmailBox.Text,
                     PhoneDisplay = phoneDisplay,
-                    PhoneLink    = phoneLink,
+                    PhoneLink = phoneLink,
                 };
 
                 var installer = new Installer(Paths.GetTemplateBase());
@@ -151,10 +152,10 @@ namespace OutlookSignatureInstaller.Gui
             {
                 var cfg = new Config
                 {
-                    TemplateName   = TemplateNameBox.Text,
+                    TemplateName = TemplateNameBox.Text,
                     TemplateSource = (TemplateSourceBox.SelectedItem as ComboBoxItem)
                                          ?.Content?.ToString() ?? "local",
-                    BaseUrl        = BaseUrlBox.Text,
+                    BaseUrl = BaseUrlBox.Text,
                 };
 
                 ConfigManager.SaveUserConfig(new FileSystem(), cfg);
@@ -174,19 +175,19 @@ namespace OutlookSignatureInstaller.Gui
         {
             if (string.IsNullOrEmpty(message))
             {
-                label.Text       = string.Empty;
+                label.Text = string.Empty;
                 label.Visibility = Visibility.Collapsed;
             }
             else
             {
-                label.Text       = message;
+                label.Text = message;
                 label.Visibility = Visibility.Visible;
             }
         }
 
         private static void SetStatus(TextBlock label, string message, Brush colour)
         {
-            label.Text       = message;
+            label.Text = message;
             label.Foreground = colour;
         }
     }

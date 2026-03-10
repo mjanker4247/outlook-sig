@@ -1,3 +1,4 @@
+using OutlookSignatureInstaller.Common;
 using System;
 using System.IO;
 using System.IO.Abstractions;
@@ -6,7 +7,6 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using OutlookSignatureInstaller.Common;
 
 namespace OutlookSignatureInstaller.Signature
 {

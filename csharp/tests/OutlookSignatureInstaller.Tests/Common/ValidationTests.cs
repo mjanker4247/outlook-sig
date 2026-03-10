@@ -1,5 +1,5 @@
-using Xunit;
 using OutlookSignatureInstaller.Common;
+using Xunit;
 
 namespace OutlookSignatureInstaller.Tests.Common
 {

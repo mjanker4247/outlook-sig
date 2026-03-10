@@ -1,7 +1,7 @@
-using System;
-using System.Collections.Generic;
 using OutlookSignatureInstaller.Common;
 using OutlookSignatureInstaller.Signature;
+using System;
+using System.Collections.Generic;
 
 namespace OutlookSignatureInstaller.Cli
 {
@@ -55,10 +55,10 @@ namespace OutlookSignatureInstaller.Cli
 
                 switch (flag)
                 {
-                    case "--name":            case "-n": result["name"]            = value; i++; break;
-                    case "--title":           case "-t": result["title"]           = value; i++; break;
-                    case "--email":           case "-e": result["email"]           = value; i++; break;
-                    case "--phone":           case "-p": result["phone"]           = value; i++; break;
+                    case "--name": case "-n": result["name"] = value; i++; break;
+                    case "--title": case "-t": result["title"] = value; i++; break;
+                    case "--email": case "-e": result["email"] = value; i++; break;
+                    case "--phone": case "-p": result["phone"] = value; i++; break;
                     case "--template-source": case "-s": result["template-source"] = value; i++; break;
                 }
             }

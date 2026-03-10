@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <!-- WinExe suppresses the console window on launch, mirroring Go's -H windowsgui linker flag.
@@ -28,7 +28,6 @@
     <Content Include="..\..\..\..\templates\**" CopyToOutputDirectory="PreserveNewest">
       <Link>templates\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Content>
-    <Content Include="..\..\..\..\config.yaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
