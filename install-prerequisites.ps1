@@ -19,8 +19,9 @@ if (!(Get-Command git -ErrorAction SilentlyContinue)) {
     scoop install git
 }
 
-$goVersion = (go version 2>&1) | Out-String
-if (!($goVersion -match "go1\.24") -or !(Get-Command go -ErrorAction SilentlyContinue)) {
+$goCmd = Get-Command go -ErrorAction SilentlyContinue
+$goVersion = if ($goCmd) { (go version 2>&1) | Out-String } else { "" }
+if (!$goCmd -or !($goVersion -match "go1\.24")) {
     Write-Host "Installing Go 1.24.2..." -ForegroundColor Yellow
     scoop install go@1.24.2
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" +
